@@ -1,0 +1,5 @@
+Django==3.2.7
+channels==3.0.5
+django-simpleui==2021.12.7
+djangorestframework==3.12.4
+django-import-export==2.5.0
