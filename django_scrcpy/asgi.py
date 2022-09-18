@@ -6,22 +6,22 @@ It exposes the ASGI callable as a module-level variable named ``application``.
 For more information on this file, see
 https://docs.djangoproject.com/en/3.2/howto/deployment/asgi/
 """
-
 import os
+from concurrent.futures import ThreadPoolExecutor
 
 from channels.routing import ProtocolTypeRouter, URLRouter
-from channels.sessions import SessionMiddlewareStack
 from django.core.asgi import get_asgi_application
-from wserver import routing
+from asgiref.sync import SyncToAsync
 
+from wsapp import routing
+
+SyncToAsync.single_thread_executor = ThreadPoolExecutor(max_workers=5)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_scrcpy.settings')
+
 
 django_asgi_app = get_asgi_application()
 application = ProtocolTypeRouter({
-    'websocket': SessionMiddlewareStack(
-        URLRouter(
-            routing.websocket_urlpatterns,
-        ),
-    ),
+    'websocket': URLRouter(routing.websocket_urlpatterns,),
     "http": django_asgi_app,
 })
+

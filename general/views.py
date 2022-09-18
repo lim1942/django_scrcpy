@@ -1,5 +1,3 @@
-import time
-
 from django.shortcuts import render
 from rest_framework.decorators import action
 from rest_framework.viewsets import ReadOnlyModelViewSet
@@ -23,6 +21,4 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
 
     @action(methods=['get'], detail=True, url_path='screen')
     def screen(self, request, *args, **kwargs):
-        print('screenscreen--------')
-        time.sleep(30)
         return render(request, "play.html", kwargs)
