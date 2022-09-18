@@ -4,7 +4,7 @@ from wserver.consumer import LocalConsumer, VideoConsumer, ControlConsumer
 
 
 websocket_urlpatterns = [
-    path("stream/local/", LocalConsumer.as_asgi()),
-    path("stream/video/", VideoConsumer.as_asgi()),
-    path("stream/control/", ControlConsumer.as_asgi()),
+    path("stream/local/<str:device_id>/", LocalConsumer.as_asgi()),
+    path("stream/video/<str:device_id>/", VideoConsumer.as_asgi()),
+    path("stream/control/<str:device_id>/", ControlConsumer.as_asgi()),
 ]

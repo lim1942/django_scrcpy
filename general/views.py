@@ -1,3 +1,7 @@
+import time
+
+from django.shortcuts import render
+from rest_framework.decorators import action
 from rest_framework.viewsets import ReadOnlyModelViewSet
 from rest_framework.filters import OrderingFilter, SearchFilter
 
@@ -15,5 +19,10 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
     pagination_class = pagination.SizePageNumberPagination
     filter_backends = (OrderingFilter, SearchFilter)
     search_fields = ('name',)
-    ordering_fields = ('online', 'updated_time', 'created_time')
+    ordering_fields = ('updated_time', 'created_time')
 
+    @action(methods=['get'], detail=True, url_path='screen')
+    def screen(self, request, *args, **kwargs):
+        print('screenscreen--------')
+        time.sleep(30)
+        return render(request, "play.html", kwargs)

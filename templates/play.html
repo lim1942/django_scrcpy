@@ -1,0 +1,38 @@
+<html>
+<head>
+  <title>{{device_id}}</title>
+</head>
+<body>
+<div id='container'></div>
+<!--  <script type="text/javascript" src="/static/general/js/Decoder.js"></script>-->
+  <script type="text/javascript" src="/static/general/js/YUVWebGLCanvas.js"></script>
+  <script type="text/javascript" src="/static/general/js/Player.js"></script>
+  <script>
+    	window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 416, height: 896 }, workerFile: "/static/general/js/Decoder.js" })
+		var playerElement = document.getElementById('container')
+		playerElement.appendChild(window.player.canvas)
+		var ws_url = "ws://" + document.location.host + "/stream/video/" + "{{device_id}}" + "/"
+        var ws = new WebSocket(ws_url)
+        ws.binaryType = 'arraybuffer'
+        ws.onopen = function (e) {
+            console.log('Client connected')
+            ws.onmessage = function (msg) {
+                window.player.decode(new Uint8Array(msg.data));
+                if(window.debugger){
+                 window.debugger.nal(msg.data.byteLength);
+                }
+            }
+        }
+        ws.onclose = function (e) {
+            console.log('Client disconnected')
+            if (reconnectMs > 0) {
+                setTimeout(function() { startStream(playerId, wsUri, useWorker, webgl, reconnectMs) }, reconnectMs)
+            }
+        }
+  </script>
+<!--  <script>-->
+<!--        var control_ws_url = 'ws://' + document.location.host + '/stream/control/' + '{device_id}' + '/'-->
+<!--        var control_ws = new WebSocket(control_ws_url)-->
+<!--  </script>`-->
+</body>
+</html>

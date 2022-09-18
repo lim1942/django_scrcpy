@@ -18,9 +18,9 @@ from django.views.static import serve
 from django.urls import path, re_path, include
 from django_scrcpy.settings import STATIC_ROOT
 
-admin.site.site_header = '取证管理端'
-admin.site.site_title = '取证管理端'
-admin.site.index_title = '取证管理端'
+admin.site.site_header = 'django_scrcpy'
+admin.site.site_title = 'django_scrcpy'
+admin.site.index_title = 'django_scrcpy'
 
 urlpatterns = [
     re_path('^static/(?P<path>.*)$', serve, {'document_root': STATIC_ROOT}),
