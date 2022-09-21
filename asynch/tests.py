@@ -1,3 +1,5 @@
+import asyncio
+import time
 
 
 async def LocalWsHandle(scope, receive, send):
@@ -18,8 +20,14 @@ async def LocalWsHandle(scope, receive, send):
                 'text': 'send'
             })
 
+async def test():
+    print('#########')
+    while True:
+        time.sleep(1)
+        print('-------')
 
 async def VideoWsHandle(scope, receive, send):
+    loop = asyncio.get_event_loop()
     while True:
         event = await receive()
         if event['type'] == 'websocket.connect':
@@ -37,7 +45,7 @@ async def VideoWsHandle(scope, receive, send):
                 'type': 'websocket.send',
                 'text': 'send'
             })
-
+        loop.create_task(test())
 
 async def ControlWsHandle(scope, receive, send):
     while True:
@@ -46,7 +54,7 @@ async def ControlWsHandle(scope, receive, send):
             await send({
                 'type': 'websocket.accept'
             })
-            print('ControlWsHandle')
+
 
         if event['type'] == 'websocket.disconnect':
             break

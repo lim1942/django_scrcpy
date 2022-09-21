@@ -13,7 +13,7 @@ from channels.routing import ProtocolTypeRouter, URLRouter
 from django.core.asgi import get_asgi_application
 from asgiref.sync import SyncToAsync
 
-from wsapp import routing
+from asynch import routing
 
 SyncToAsync.single_thread_executor = ThreadPoolExecutor(max_workers=5)
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_scrcpy.settings')

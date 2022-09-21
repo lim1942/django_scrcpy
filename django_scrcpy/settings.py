@@ -42,6 +42,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'general',
+    'channels'
 ]
 
 MIDDLEWARE = [
@@ -132,15 +133,6 @@ STATIC_ROOT = 'staticfiles'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-CHANNEL_LAYERS = {
-    'default': {
-       'BACKEND': 'channels_redis.core.RedisChannelLayer',
-       'CONFIG': {
-            'hosts': [('127.0.0.1', 6379)]
-        }
-    },
-}
-
 # simpleui配置
 SIMPLEUI_CONFIG = {
     'system_keep': True,
@@ -163,3 +155,8 @@ REST_FRAMEWORK = {
     # # 文档
     # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
 }
+
+
+# adb
+ADB_SERVER_ADDR = '127.0.0.1'
+ADB_SERVER_PORT = '5037'
