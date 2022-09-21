@@ -1,8 +1,8 @@
 from django.urls import path
 
-from asynch.asyncws import VideoWebsocketConsumer
+from asynch.ws import DeviceWebsocketConsumer
 
 
 websocket_urlpatterns = [
-    path("stream/video/<str:device_id>/", VideoWebsocketConsumer.as_asgi()),
+    path("stream/device/<str:device_id>/", DeviceWebsocketConsumer.as_asgi()),
 ]

@@ -3,7 +3,7 @@ import struct
 import functools
 from time import sleep
 
-from scrcpy import const
+from asynch import const
 
 
 def inject(control_type: int):
