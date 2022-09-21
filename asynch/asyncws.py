@@ -90,7 +90,7 @@ class VideoWebsocketConsumer(AsyncWebsocketConsumer):
         self.video_task = self.VIDEO_TASK_DICT[self.device_id] = asyncio.ensure_future(self._video_task2())
         self.control_task = self.CONTROL_TASK_DICT[self.device_id] = asyncio.ensure_future(self._control_task())
 
-    # 内存中滞留一帧，画面多40ms延迟，丢包率低
+    # 内存中滞留一帧，数据推送多一帧延迟，丢包率低
     async def _video_task1(self):
         if not self.video_socket:
             return
@@ -125,7 +125,7 @@ class VideoWebsocketConsumer(AsyncWebsocketConsumer):
                 else:
                     break
 
-    # 实时推送当前帧，画面无延迟，丢包率高
+    # 实时推送当前帧，丢包率高
     async def _video_task2(self):
         if not self.video_socket:
             return
