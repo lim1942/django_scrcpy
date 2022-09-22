@@ -2,7 +2,6 @@
 """Django's command-line utility for administrative tasks."""
 import os
 import sys
-from asynch.ws import DeviceWebsocketConsumer
 
 def main():
     """Run administrative tasks."""

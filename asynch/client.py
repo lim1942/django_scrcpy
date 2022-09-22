@@ -86,6 +86,13 @@ class DeviceClient:
         # 设备型号和分辨率
         self.device_name = None
         self.resolution = None
+        # 设备并发锁
+        self.device_lock = asyncio.Lock()
+
+    def update(self, **kwargs):
+        for k, v in kwargs.items():
+            setattr(self, k, v)
+        print(f"update {self.device_id} to {kwargs}")
 
     def get_command(self, cmd_list):
         command = ' '.join(cmd_list)
