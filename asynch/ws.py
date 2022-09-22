@@ -121,6 +121,8 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
                 break
             # 2.向客户端发送当前nal
             current_nal_data = await self.device_client.video_socket.read(data_length)
+            if not current_nal_data.startswith(b'\x00\x00\x00\x01'):
+                print("当前nal数据错误！！！")
             for ws_client in self.WS_CLIENT_DICT.get(self.device_id, []):
                 await ws_client.send(bytes_data=current_nal_data)
 
