@@ -8,9 +8,16 @@
   <script type="text/javascript" src="/static/general/js/YUVWebGLCanvas.js"></script>
   <script type="text/javascript" src="/static/general/js/Player.js"></script>
   <script>
-    	window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 416, height: 896 }, workerFile: "/static/general/js/Decoder.js" })
 		var playerElement = document.getElementById('container')
-		playerElement.appendChild(window.player.canvas)
+
+		function init_player(){
+		    for (var child of playerElement.childNodes){
+		      playerElement.removeChild(child)
+		    }
+            window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 416, height: 896 }, workerFile: "/static/general/js/Decoder.js" })
+            playerElement.appendChild(window.player.canvas)
+		}
+
 		var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.location.href.split('?')[1]
         var ws = new WebSocket(ws_url)
         ws.binaryType = 'arraybuffer'
@@ -18,16 +25,15 @@
             console.log('Client connected')
         }
         ws.onmessage = function (msg) {
-            window.player.decode(new Uint8Array(msg.data));
-            if(window.debugger){
-                window.debugger.nal(msg.data.byteLength);
+            unit8_data = new Uint8Array(msg.data)
+            if (unit8_data[4]==103){
+              console.log("初始化播放器")
+              init_player()
             }
+            window.player.decode(unit8_data);
         }
         ws.onclose = function (e) {
             console.log('Client disconnected')
-            if (reconnectMs > 0) {
-                setTimeout(function() { startStream(playerId, wsUri, useWorker, webgl, reconnectMs) }, reconnectMs)
-            }
         }
   </script>
 </body>
