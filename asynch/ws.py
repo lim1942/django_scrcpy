@@ -13,6 +13,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
     DEVICE_CLIENT_DICT = dict()
     VIDEO_TASK_DICT = dict()
     CONTROL_TASK_DICT = dict()
+    CONNECT_LOCK = asyncio.Lock()
 
     @classmethod
     async def cancel_task(cls, task):
@@ -31,24 +32,25 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.control_task = None
 
     async def connect(self):
-        await self.accept()
-        self.query_params = parse.parse_qs(self.scope['query_string'].decode())
-        self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
-        # 1.关闭老的device_client
-        old_device_client = self.DEVICE_CLIENT_DICT.get(self.device_id, None)
-        if old_device_client:
-            await old_device_client.disconnect()
-            del self.DEVICE_CLIENT_DICT[self.device_id]
-        # 2.关闭关联的异步任务
-        await self.stop_task()
-        # 3.获取新的device_client
-        config_dict = json.loads(self.query_params['config'][0])
-        self.device_client = self.DEVICE_CLIENT_DICT[self.device_id] = DeviceClient(self.device_id, **config_dict)
-        await self.device_client.connect()
-        # 4.记录当前client到CLIENT_DICT
-        self.add_client_record()
-        # 5.开启异步video任务
-        await self.start_task()
+        async with self.CONNECT_LOCK:
+            await self.accept()
+            self.query_params = parse.parse_qs(self.scope['query_string'].decode())
+            self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
+            # 1.关闭老的device_client
+            old_device_client = self.DEVICE_CLIENT_DICT.get(self.device_id, None)
+            if old_device_client:
+                await old_device_client.disconnect()
+                del self.DEVICE_CLIENT_DICT[self.device_id]
+            # 2.关闭关联的异步任务
+            await self.stop_task()
+            # 3.获取新的device_client
+            config_dict = json.loads(self.query_params['config'][0])
+            self.device_client = self.DEVICE_CLIENT_DICT[self.device_id] = DeviceClient(self.device_id, **config_dict)
+            await self.device_client.connect()
+            # 4.记录当前client到CLIENT_DICT
+            self.add_client_record()
+            # 5.开启异步video任务
+            await self.start_task()
 
     async def receive(self, text_data=None, bytes_data=None):
         print(self.device_id, text_data, bytes_data)

@@ -14,7 +14,7 @@
 		    for (var child of playerElement.childNodes){
 		      playerElement.removeChild(child)
 		    }
-            window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 416, height: 896 }, workerFile: "/static/general/js/Decoder.js" })
+            window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" })
             playerElement.appendChild(window.player.canvas)
 		}
 

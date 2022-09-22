@@ -55,6 +55,13 @@ class AsyncSocket:
 
 
 class DeviceClient:
+    @classmethod
+    def shell(cls, command):
+        """because asyncio.subprocess has bug on windows, so use normal subprocess
+        这里应该使用asyncio.subprocess,因为在windows平台该模块有bug，故使用同步的subprocess
+        """
+        return subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+
     def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
                  crop='', stay_awake=True, codec_options='', encoder_name="OMX.google.h264.encoder",
                  send_frame_meta=True, connect_timeout=300):
@@ -80,22 +87,18 @@ class DeviceClient:
         self.device_name = None
         self.resolution = None
 
-    def shell(self, command):
-        """because asyncio.subprocess has bug on windows, so use normal subprocess
-        这里应该使用asyncio.subprocess,因为在windows平台该模块有bug，故使用同步的subprocess
-        """
-        if isinstance(command, list):
-            command = ' '.join(command)
-        command = f'adb -s {self.device_id} {command}'
-        return subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
+    def get_command(self, cmd_list):
+        command = ' '.join(cmd_list)
+        if not command.startswith('adb'):
+            command = f'adb -s {self.device_id} {command}'
+        return command
 
     async def prepare_server(self):
         # 1.推送jar包到设备
-        jar_name = "scrcpy-server-v1.24"
-        server_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), jar_name)
-        self.shell(['push', server_file_path, f"/data/local/tmp/scrcpy-server.jar"])
+        server_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scrcpy-server-v1.24")
+        commands1 = self.get_command(['push', server_file_path, f"/data/local/tmp/scrcpy-server.jar"])
         # 2.启动server
-        commands = [
+        commands2 = self.get_command([
             "shell",
             "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
             "app_process",
@@ -118,8 +121,8 @@ class DeviceClient:
             "power_off_on_close=false",  # Power off screen after server closed
             "raw_video_stream=false",    # video_socket just receive raw_video_stream
             f"send_frame_meta={self.send_frame_meta}",    # receive frame_mete
-        ]
-        self.deploy_process = self.shell(commands)
+        ])
+        self.deploy_process = self.shell(f'{commands1} && {commands2}')
 
     async def prepare_socket(self):
         self.video_socket = AsyncSocket(self.device_id, connect_timeout=self.connect_timeout)
@@ -151,7 +154,8 @@ class DeviceClient:
         if self.control_socket:
             await self.control_socket.disconnect()
             self.control_socket = None
-        # if self.deploy_process:
-        #     # todo 不能关闭手机上的scrcpy，等待scrcpy自己关闭
-        #     self.deploy_process.terminate()
-        #     self.deploy_process = None
+        if self.deploy_process:
+            proc = self.shell(self.get_command(["shell", "\"ps -ef | grep scrcpy |awk '{print $2}' |xargs kill -9\""]))
+            proc.wait()
+            self.deploy_process.wait()
+            self.deploy_process = None
