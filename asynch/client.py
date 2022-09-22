@@ -119,7 +119,7 @@ class DeviceClient:
             f"codec_options={self.codec_options}",  # Codec (video encoding) options
             f"encoder_name={self.encoder_name}",  # Encoder name
             "power_off_on_close=false",  # Power off screen after server closed
-            "clipboard_autosync=true",
+            "clipboard_autosync=true",   # auto sync clipboard
             "raw_video_stream=false",    # video_socket just receive raw_video_stream
             f"send_frame_meta={self.send_frame_meta}",    # receive frame_mete
         ])
