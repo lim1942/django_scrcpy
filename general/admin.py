@@ -21,9 +21,9 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
-            return ['device_id', 'updated_time', 'created_time']
+            return ['config', 'device_id', 'updated_time', 'created_time']
         else:
-            return ['updated_time', 'created_time']
+            return ['config', 'updated_time', 'created_time']
 
     def has_add_permission(self, request):
         return False
@@ -53,3 +53,7 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
                 self.devices_dict[device_id] = status
         models.Mobile.objects.bulk_create([models.Mobile(device_id=k) for k, v in self.devices_dict.items()], ignore_conflicts=True)
         return super().changelist_view(request, extra_context)
+
+    def save_model(self, request, obj, form, change):
+        obj.config = form.cleaned_data['config']
+        obj.save()
