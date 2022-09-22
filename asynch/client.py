@@ -6,12 +6,12 @@ import subprocess
 from django_scrcpy.settings import ADB_SERVER_ADDR, ADB_SERVER_PORT
 
 
-class AsyncSocket:
+class AsyncAdbSocket:
     @classmethod
     def cmd_format(cls, cmd):
         return "{:04x}{}".format(len(cmd), cmd).encode("utf-8")
 
-    def __init__(self, device_id, connect_timeout=300, connect_name='localabstract:scrcpy'):
+    def __init__(self, device_id, connect_name, connect_timeout=300):
         self.device_id = device_id
         self.connect_timeout = connect_timeout
         self.connect_name = connect_name
@@ -81,8 +81,6 @@ class DeviceClient:
         self.video_socket = None
         self.control_socket = None
         self.deploy_process = None
-        # 当前client是否存活
-        self.alive = False
         # 设备型号和分辨率
         self.device_name = None
         self.resolution = None
@@ -101,7 +99,7 @@ class DeviceClient:
         return command
 
     async def prepare_server(self):
-        # 1.推送jar包到设备
+        # 1.推送jar包
         server_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scrcpy-server-v1.24")
         commands1 = self.get_command(['push', server_file_path, f"/data/local/tmp/scrcpy-server.jar"])
         # 2.启动server
@@ -116,7 +114,7 @@ class DeviceClient:
             f"max_size={self.max_size}",  # Max screen width (long side)
             f"bit_rate={self.bit_rate}",  # Bitrate of video
             f"max_fps={self.max_fps}",  # Max frame per second
-            f"lock_video_orientation={self.lock_video_orientation}",    # Lock screen orientation: LOCK_SCREEN_ORIENTATION
+            f"lock_video_orientation={self.lock_video_orientation}",    # Lock screen orientation
             "tunnel_forward=true",  # Tunnel forward
             f"crop={self.crop}",  # Crop screen
             "control=true",  # Control enabled
@@ -133,14 +131,14 @@ class DeviceClient:
         self.deploy_process = self.shell(f'{commands1} && {commands2}')
 
     async def prepare_socket(self):
-        self.video_socket = AsyncSocket(self.device_id, connect_timeout=self.connect_timeout)
+        self.video_socket = AsyncAdbSocket(self.device_id, 'localabstract:scrcpy', connect_timeout=self.connect_timeout)
         await self.video_socket.connect()
         # 1.video_socket连接成功标志
         dummy_byte = await self.video_socket.read(1)
         if not len(dummy_byte) or dummy_byte != b"\x00":
             raise ConnectionError("not receive Dummy Byte")
         # 2.连接control_socket
-        self.control_socket = AsyncSocket(self.device_id, connect_timeout=self.connect_timeout)
+        self.control_socket = AsyncAdbSocket(self.device_id, 'localabstract:scrcpy', connect_timeout=self.connect_timeout)
         await self.control_socket.connect()
         # 3.获取设备类型
         self.device_name = (await self.video_socket.read(64)).decode("utf-8").rstrip("\x00")
@@ -152,10 +150,8 @@ class DeviceClient:
     async def connect(self):
         await self.prepare_server()
         await self.prepare_socket()
-        self.alive = True
 
     async def disconnect(self):
-        self.alive = False
         if self.video_socket:
             await self.video_socket.disconnect()
             self.video_socket = None
@@ -163,7 +159,6 @@ class DeviceClient:
             await self.control_socket.disconnect()
             self.control_socket = None
         if self.deploy_process:
-            proc = self.shell(self.get_command(["shell", "\"ps -ef | grep scrcpy |awk '{print $2}' |xargs kill -9\""]))
-            proc.wait()
+            self.shell(self.get_command(["shell", "\"ps -ef | grep scrcpy |awk '{print $2}' |xargs kill -9\""])).wait()
             self.deploy_process.wait()
             self.deploy_process = None
