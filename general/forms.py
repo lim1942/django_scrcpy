@@ -34,7 +34,7 @@ class MobileForm(forms.ModelForm):
         if field_name == 'max_size':
             return config_dict.get(field_name, 720)
         elif field_name == 'bit_rate':
-            return config_dict.get(field_name, 800)
+            return config_dict.get(field_name, 8000000)
         elif field_name == 'max_fps':
             return config_dict.get(field_name, 25)
         elif field_name == 'lock_video_orientation':
