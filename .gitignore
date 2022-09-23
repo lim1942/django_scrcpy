@@ -132,3 +132,4 @@ dataset/
 .DS_Store
 .zip
 nohup.out
+/staticfiles/
