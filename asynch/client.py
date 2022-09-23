@@ -3,55 +3,7 @@ import struct
 import asyncio
 import subprocess
 
-from django_scrcpy.settings import ADB_SERVER_ADDR, ADB_SERVER_PORT
-
-
-class AsyncAdbSocket:
-    @classmethod
-    def cmd_format(cls, cmd):
-        return "{:04x}{}".format(len(cmd), cmd).encode("utf-8")
-
-    def __init__(self, device_id, connect_name, connect_timeout=300):
-        self.device_id = device_id
-        self.connect_timeout = connect_timeout
-        self.connect_name = connect_name
-        self.reader = None
-        self.writer = None
-
-    async def _connect(self):
-        try:
-            self.reader, self.writer = await asyncio.open_connection(ADB_SERVER_ADDR, ADB_SERVER_PORT)
-            self.writer.write(self.cmd_format(f'host:transport:{self.device_id}'))
-            await self.writer.drain()
-            assert await self.reader.read(4) == b'OKAY'
-            self.writer.write(self.cmd_format(self.connect_name))
-            await self.writer.drain()
-            assert await self.reader.read(4) == b'OKAY'
-            return True
-        except:
-            self.writer.close()
-            await self.writer.wait_closed()
-
-    async def connect(self):
-        for _ in range(self.connect_timeout):
-            if await self._connect():
-                break
-            await asyncio.sleep(0.01)
-        else:
-            raise ConnectionError(f"connect to {self.connect_name} error!!")
-
-    async def read(self, cnt=-1):
-        return await self.reader.read(cnt)
-
-    async def write(self, data):
-        self.writer.write(data)
-        await self.writer.drain()
-
-    async def disconnect(self):
-        if self.writer:
-            self.writer.close()
-            await self.writer.wait_closed()
-            self.writer = self.reader = None
+from asynch.asocket import AsyncAdbSocket
 
 
 class DeviceClient:
@@ -62,9 +14,18 @@ class DeviceClient:
         """
         return subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
 
+    @classmethod
+    async def cancel_task(cls, task):
+        task.cancel()
+        try:
+            await task
+        except asyncio.CancelledError:
+            print("task is cancelled now")
+
     def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
                  crop='', stay_awake=True, codec_options='', encoder_name="OMX.google.h264.encoder",
                  send_frame_meta=True, connect_timeout=300):
+        # scrcpy_server启动参数
         self.device_id = device_id
         self.max_size = max_size
         self.bit_rate = bit_rate
@@ -75,17 +36,23 @@ class DeviceClient:
         self.codec_options = codec_options
         self.encoder_name = encoder_name
         self.send_frame_meta = send_frame_meta
-        # socket 连接超时时间
+        # adb socket连接超时时间
         self.connect_timeout = connect_timeout
-        # 连接到设备的socket和部署进程
+        # 连接设备的socket
         self.video_socket = None
         self.control_socket = None
+        # 部署进程
         self.deploy_process = None
         # 设备型号和分辨率
         self.device_name = None
         self.resolution = None
         # 设备并发锁
         self.device_lock = asyncio.Lock()
+        # 需要推流得ws_client
+        self.ws_client_list = list()
+        # 监听设备socket的任务
+        self.video_task = None
+        self.control_task = None
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -147,11 +114,62 @@ class DeviceClient:
         # 4.获取分辨率
         self.resolution = struct.unpack(">HH", await self.video_socket.read(4))
 
-    async def connect(self):
+    # 内存中滞留一帧，数据推送多一帧延迟，丢包率低
+    async def _video_task1(self):
+        data = b''
+        while True:
+            # 1.读取socket种的字节流，按h264里nal组装起来
+            chunk = await self.video_socket.read(0x10000)
+            if chunk:
+                data += chunk
+            else:
+                print(f"{self.device_id} :video socket已经关闭！！！")
+                break
+            # 2.向客户端发送当前nal数据
+            while True:
+                next_nal_idx = data.find(b'\x00\x00\x00\x01', 4)
+                if next_nal_idx > 0:
+                    current_nal_data = data[:next_nal_idx]
+                    data = data[next_nal_idx:]
+                    for ws_client in self.ws_client_list:
+                        await ws_client.send(bytes_data=current_nal_data)
+                else:
+                    break
+
+    # 实时推送当前帧，丢包率高
+    async def _video_task2(self):
+        while True:
+            # 1.读取frame_meta
+            frame_meta = await self.video_socket.read(12)
+            if frame_meta:
+                data_length = struct.unpack('>L', frame_meta[8:])[0]
+            else:
+                print(f"{self.device_id} :video socket已经关闭！！！")
+                break
+            # 2.向客户端发送当前nal
+            current_nal_data = await self.video_socket.read(data_length)
+            for ws_client in self.ws_client_list:
+                await ws_client.send(bytes_data=current_nal_data)
+
+    async def _control_task(self):
+        while True:
+            data = await self.control_socket.read(0x1000)
+            if data:
+                print(f'{self.device_id} :control_socket====', data)
+            else:
+                print(f"{self.device_id} :control socket已经关闭！！！")
+                break
+
+    async def start(self):
         await self.prepare_server()
         await self.prepare_socket()
+        if self.send_frame_meta:
+            self.video_task = asyncio.ensure_future(self._video_task2())
+        else:
+            self.video_task = asyncio.ensure_future(self._video_task1())
+        self.control_task = asyncio.ensure_future(self._control_task())
 
-    async def disconnect(self):
+    async def stop(self):
         if self.video_socket:
             await self.video_socket.disconnect()
             self.video_socket = None
@@ -162,3 +180,7 @@ class DeviceClient:
             self.shell(self.get_command(["shell", "\"ps -ef | grep scrcpy |awk '{print $2}' |xargs kill -9\""])).wait()
             self.deploy_process.wait()
             self.deploy_process = None
+        if self.video_task:
+            await self.cancel_task(self.video_task)
+        if self.control_task:
+            await self.cancel_task(self.control_task)
