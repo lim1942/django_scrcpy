@@ -87,7 +87,7 @@ class DeviceClient:
             "control=true",  # Control enabled
             "display_id=0",  # Display id
             "show_touches=false",  # Show touches
-            f"stay_awake={self.stay_awake}",  # Stay awake
+            f"stay_awake={self.stay_awake}",  # scrcpy server Stay awake
             f"codec_options={self.codec_options}",  # Codec (video encoding) options
             f"encoder_name={self.encoder_name}",  # Encoder name
             "power_off_on_close=false",  # Power off screen after server closed
@@ -148,6 +148,8 @@ class DeviceClient:
                 break
             # 2.向客户端发送当前nal
             current_nal_data = await self.video_socket.read(data_length)
+            if current_nal_data.startswith(b'\x00\x00\x00\x01'):
+                print("当前nal错误", current_nal_data)
             for ws_client in self.ws_client_list:
                 await ws_client.send(bytes_data=current_nal_data)
 

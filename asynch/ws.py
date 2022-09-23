@@ -10,8 +10,8 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.query_params = None
         self.device_id = None
+        self.query_params = None
         self.device_client = None
 
     async def connect(self):
