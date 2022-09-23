@@ -36,6 +36,9 @@ class AsyncAdbSocket:
             raise ConnectionError(f"connect to {self.connect_name} error!!")
 
     async def read(self, cnt=-1):
+        return await self.reader.read(cnt)
+
+    async def read_exactly(self, cnt):
         return await self.reader.readexactly(cnt)
 
     async def read_until(self, sep):

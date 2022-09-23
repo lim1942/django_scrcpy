@@ -103,18 +103,18 @@ class DeviceClient:
         self.video_socket = AsyncAdbSocket(self.device_id, 'localabstract:scrcpy', connect_timeout=self.connect_timeout)
         await self.video_socket.connect()
         # 1.video_socket连接成功标志
-        dummy_byte = await self.video_socket.read(1)
+        dummy_byte = await self.video_socket.read_exactly(1)
         if not len(dummy_byte) or dummy_byte != b"\x00":
             raise ConnectionError("not receive Dummy Byte")
         # 2.连接control_socket
         self.control_socket = AsyncAdbSocket(self.device_id, 'localabstract:scrcpy', connect_timeout=self.connect_timeout)
         await self.control_socket.connect()
         # 3.获取设备类型
-        self.device_name = (await self.video_socket.read(64)).decode("utf-8").rstrip("\x00")
+        self.device_name = (await self.video_socket.read_exactly(64)).decode("utf-8").rstrip("\x00")
         if not len(self.device_name):
             raise ConnectionError("not receive Device Name")
         # 4.获取分辨率
-        self.resolution = struct.unpack(">HH", await self.video_socket.read(4))
+        self.resolution = struct.unpack(">HH", await self.video_socket.read_exactly(4))
 
     # 滞留一帧，数据推送多一帧延迟，丢包率低
     async def _video_task1(self):
@@ -128,10 +128,10 @@ class DeviceClient:
     async def _video_task2(self):
         while True:
             # 1.读取frame_meta
-            frame_meta = await self.video_socket.read(12)
+            frame_meta = await self.video_socket.read_exactly(12)
             data_length = struct.unpack('>L', frame_meta[8:])[0]
             # 2.向客户端发送当前nal
-            current_nal_data = await self.video_socket.read(data_length)
+            current_nal_data = await self.video_socket.read_exactly(data_length)
             for ws_client in self.ws_client_list:
                 await ws_client.send(bytes_data=current_nal_data)
 
