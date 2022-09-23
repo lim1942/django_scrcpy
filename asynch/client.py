@@ -21,6 +21,8 @@ class DeviceClient:
             await task
         except asyncio.CancelledError:
             print("task is cancelled now")
+        except asyncio.streams.IncompleteReadError:
+            print("socket read error now")
 
     def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
                  crop='', stay_awake=True, codec_options='', encoder_name="OMX.google.h264.encoder",
@@ -114,38 +116,20 @@ class DeviceClient:
         # 4.获取分辨率
         self.resolution = struct.unpack(">HH", await self.video_socket.read(4))
 
-    # 内存中滞留一帧，数据推送多一帧延迟，丢包率低
+    # 滞留一帧，数据推送多一帧延迟，丢包率低
     async def _video_task1(self):
-        data = b''
         while True:
-            # 1.读取socket种的字节流，按h264里nal组装起来
-            chunk = await self.video_socket.read(0x10000)
-            if chunk:
-                data += chunk
-            else:
-                print(f"{self.device_id} :video socket已经关闭！！！")
-                break
-            # 2.向客户端发送当前nal数据
-            while True:
-                next_nal_idx = data.find(b'\x00\x00\x00\x01', 4)
-                if next_nal_idx > 0:
-                    current_nal_data = data[:next_nal_idx]
-                    data = data[next_nal_idx:]
-                    for ws_client in self.ws_client_list:
-                        await ws_client.send(bytes_data=current_nal_data)
-                else:
-                    break
+            data = await self.video_socket.read_until(b'\x00\x00\x00\x01')
+            current_nal_data = b'\x00\x00\x00\x01' + data.rstrip(b'\x00\x00\x00\x01')
+            for ws_client in self.ws_client_list:
+                await ws_client.send(bytes_data=current_nal_data)
 
-    # 实时推送当前帧，丢包率高
+    # 实时推送当前帧，可能丢包
     async def _video_task2(self):
         while True:
             # 1.读取frame_meta
             frame_meta = await self.video_socket.read(12)
-            if frame_meta:
-                data_length = struct.unpack('>L', frame_meta[8:])[0]
-            else:
-                print(f"{self.device_id} :video socket已经关闭！！！")
-                break
+            data_length = struct.unpack('>L', frame_meta[8:])[0]
             # 2.向客户端发送当前nal
             current_nal_data = await self.video_socket.read(data_length)
             if not current_nal_data.startswith(b'\x00\x00\x00\x01'):
