@@ -148,7 +148,7 @@ class DeviceClient:
                 break
             # 2.向客户端发送当前nal
             current_nal_data = await self.video_socket.read(data_length)
-            if current_nal_data.startswith(b'\x00\x00\x00\x01'):
+            if not current_nal_data.startswith(b'\x00\x00\x00\x01'):
                 print("当前nal错误", current_nal_data)
             for ws_client in self.ws_client_list:
                 await ws_client.send(bytes_data=current_nal_data)
