@@ -67,6 +67,9 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         # set_screen_power_mode
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE:
             await self.device_client.controller.set_screen_power_mode(obj.screen_power_mode)
+        # swipe
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SWIPE_EVENT:
+            await self.device_client.swipe(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y, step=obj.step, delay=obj.delay)
 
     async def disconnect(self, code):
         self.device_client.ws_client_list.remove(self)

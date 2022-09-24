@@ -121,7 +121,7 @@ class Controller:
         await self.inject(inject_data)
         return inject_data
 
-    def swipe(self, x, y, end_x, end_y, step=5, delay=0.005):
+    async def swipe(self, x, y, end_x, end_y, step=5, delay=0.005):
         """
         swipe (x,y) to (end_x, end_y)
         """

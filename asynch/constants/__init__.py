@@ -14,6 +14,7 @@ class sc_control_msg_type:
     SC_CONTROL_MSG_TYPE_SET_CLIPBOARD = 9
     SC_CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE = 10
     SC_CONTROL_MSG_TYPE_ROTATE_DEVICE = 11
+    SC_CONTROL_MSG_TYPE_INJECT_SWIPE_EVENT = 30
 
 
 # ================================
