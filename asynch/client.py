@@ -4,6 +4,7 @@ import asyncio
 import subprocess
 
 from asynch.asocket import AsyncAdbSocket
+from asynch.controller import Controller
 
 
 class DeviceClient:
@@ -50,11 +51,12 @@ class DeviceClient:
         self.resolution = None
         # 设备并发锁
         self.device_lock = asyncio.Lock()
+        # 设备控制器
+        self.controller = Controller(self)
         # 需要推流得ws_client
         self.ws_client_list = list()
         # 监听设备socket的任务
         self.video_task = None
-        self.control_task = None
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
@@ -93,7 +95,7 @@ class DeviceClient:
             f"codec_options={self.codec_options}",  # Codec (video encoding) options
             f"encoder_name={self.encoder_name}",  # Encoder name
             "power_off_on_close=false",  # Power off screen after server closed
-            "clipboard_autosync=true",   # auto sync clipboard
+            "clipboard_autosync=false",   # auto sync clipboard
             "raw_video_stream=false",    # video_socket just receive raw_video_stream
             f"send_frame_meta={self.send_frame_meta}",    # receive frame_mete
         ])
@@ -135,15 +137,6 @@ class DeviceClient:
             for ws_client in self.ws_client_list:
                 await ws_client.send(bytes_data=current_nal_data)
 
-    async def _control_task(self):
-        while True:
-            data = await self.control_socket.read(0x1000)
-            if data:
-                print(f'{self.device_id} :control_socket====', data)
-            else:
-                print(f"{self.device_id} :control socket已经关闭！！！")
-                break
-
     async def start(self):
         await self.prepare_server()
         await self.prepare_socket()
@@ -151,7 +144,6 @@ class DeviceClient:
             self.video_task = asyncio.ensure_future(self._video_task2())
         else:
             self.video_task = asyncio.ensure_future(self._video_task1())
-        self.control_task = asyncio.ensure_future(self._control_task())
 
     async def stop(self):
         if self.video_socket:
@@ -166,5 +158,3 @@ class DeviceClient:
             self.deploy_process = None
         if self.video_task:
             await self.cancel_task(self.video_task)
-        if self.control_task:
-            await self.cancel_task(self.control_task)

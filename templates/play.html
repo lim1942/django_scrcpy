@@ -26,11 +26,23 @@
         }
         ws.onmessage = function (msg) {
             unit8_data = new Uint8Array(msg.data)
-            if (unit8_data[4]==103){
-              console.log("初始化播放器")
-              init_player()
+            start_code = unit8_data.slice(0, 5).join('')
+            // 1.视频流数据
+            if (start_code.startsWith('0001')){
+              // 判断第一帧，重新初始化播放器，解决旋转时播放器适配问题
+              if (start_code.endsWith('103')){
+                console.log("初始化播放器")
+                init_player()
+              }
+              window.player.decode(unit8_data);
             }
-            window.player.decode(unit8_data);
+            //2.其它流数据
+            else if(start_code.startsWith('0002')){
+              data = unit8_data.slice(5)
+              console.log(data)
+              string_data = String.fromCharCode.apply(null, data)
+              console.log(string_data)
+            }
         }
         ws.onclose = function (e) {
             console.log('Client disconnected')
