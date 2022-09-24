@@ -4,6 +4,7 @@ from urllib import parse
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asynch.client import DeviceClient
 from asynch.constants import sc_control_msg_type
+from asynch.serializers import ReceiveMsgObj, format_get_clipboard_data, format_set_clipboard_data
 
 
 class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
@@ -37,40 +38,35 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
-        msg_type = int(text_data[:2])
-        msg_data = text_data[2:]
+        obj = ReceiveMsgObj()
+        obj.format_text_data(text_data)
+        self.device_client.resolution = obj.resolution
         # keycode
-        if msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_KEYCODE:
-            keycode = int(msg_data)
-            await self.device_client.controller.inject_keycode(keycode)
-            await self.device_client.controller.inject_keycode(keycode, 1)
+        if obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_KEYCODE:
+            await self.device_client.controller.inject_keycode(obj.keycode, action=obj.action)
         # text
-        elif msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TEXT:
-            await self.device_client.controller.inject_text(msg_data)
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TEXT:
+            await self.device_client.controller.inject_text(obj.text)
         # touch
-        elif msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT:
-            x, y = msg_data.split(',')
-            await self.device_client.controller.inject_touch_event(int(x), int(y))
-            await self.device_client.controller.inject_touch_event(int(x), int(y), 1)
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT:
+            await self.device_client.controller.inject_touch_event(x=obj.x, y=obj.y, action=obj.action)
         # scroll
-        elif msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT:
-            await self.device_client.controller.inject_scroll_event(160, 300, 0, -10)
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT:
+            await self.device_client.controller.inject_scroll_event(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y)
         # back_or_screen_on
-        elif msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_BACK_OR_SCREEN_ON:
-            await self.device_client.controller.back_or_screen_on()
-            await self.device_client.controller.back_or_screen_on(1)
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_BACK_OR_SCREEN_ON:
+            await self.device_client.controller.back_or_screen_on(action=obj.action)
         # get_clipboard
-        elif msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_GET_CLIPBOARD:
-            msg = await self.device_client.controller.get_clipboard()
-            await self.send(bytes_data=b'\x00\x00\x00\x02\x01'+msg)
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_GET_CLIPBOARD:
+            data = await self.device_client.controller.get_clipboard(copy_key=obj.copy_key)
+            await self.send(bytes_data=format_get_clipboard_data(data))
         # set_clipboard
-        elif msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_CLIPBOARD:
-            sequence = await self.device_client.controller.set_clipboard(msg_data)
-            await self.send(bytes_data=b'\x00\x00\x00\x02\x02'+sequence)
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_CLIPBOARD:
+            data = await self.device_client.controller.set_clipboard(text=obj.text, sequence=obj.sequence, paste=obj.paste)
+            await self.send(format_set_clipboard_data(data))
         # set_screen_power_mode
-        elif msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE:
-            mode = int(msg_data)
-            await self.device_client.controller.set_screen_power_mode(mode)
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE:
+            await self.device_client.controller.set_screen_power_mode(obj.screen_power_mode)
 
     async def disconnect(self, code):
         self.device_client.ws_client_list.remove(self)

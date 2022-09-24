@@ -27,6 +27,8 @@ class Controller:
                        metastate=android_metastate.AMETA_NONE):
         """
         keycode: in constants.keycodes.py
+        action: android_keyevent_action
+        metastate: android_metastate
         inject_data: lens 14
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_KEYCODE
@@ -47,42 +49,28 @@ class Controller:
     async def inject_touch_event(self, x, y, action=android_motionevent_action.AMOTION_EVENT_ACTION_DOWN, touch_id=-1,
                            pressure=0xFFFF, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
+        action: android_motionevent_action
+        touch_id: touch_id use to distinguish multi touch
+        pressure: touch pressure
+        buttons: android_motionevent_buttons
         inject_data: lens 28
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT
         x, y = max(x, 0), max(y, 0)
-        inject_data = struct.pack(
-            ">BBqiiHHHi",
-            msg_type,
-            action,
-            touch_id,   # touch_id use to multi point touch
-            int(x),
-            int(y),
-            int(self.device.resolution[0]),
-            int(self.device.resolution[1]),
-            pressure,   # touch pressure
-            buttons,    # android_motionevent_buttons
-        )
+        inject_data = struct.pack(">BBqiiHHHi", msg_type, action, touch_id, int(x), int(y),
+                                  int(self.device.resolution[0]), int(self.device.resolution[1]), pressure, buttons)
         await self.inject(inject_data)
         return inject_data
 
-    async def inject_scroll_event(self, x, y, x_d, y_d, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
+    async def inject_scroll_event(self, x, y, end_x, end_y, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
+        buttons: android_motionevent_buttons
         inject_data: lens 25
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT
         x, y = max(x, 0), max(y, 0)
-        inject_data = struct.pack(
-            ">BiiHHiii",
-            msg_type,
-            int(x),
-            int(y),
-            int(self.device.resolution[0]),
-            int(self.device.resolution[1]),
-            int(x_d),
-            int(y_d),
-            buttons
-        )
+        inject_data = struct.pack(">BiiHHiii", msg_type, int(x), int(y), int(self.device.resolution[0]),
+                                  int(self.device.resolution[1]), int(end_x), int(end_y), buttons)
         await self.inject(inject_data)
         return inject_data
 
@@ -97,6 +85,7 @@ class Controller:
 
     async def get_clipboard(self, copy_key=sc_copy_key.SC_COPY_KEY_COPY):
         """
+        copy_key: none, copy, cut
         inject_data: lens 2
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_GET_CLIPBOARD
@@ -111,6 +100,7 @@ class Controller:
     async def set_clipboard(self, text, sequence=1, paste=True):
         """
         sequence: 序列号用于标识复制是否成功。不为0时，set_clipboard成功后scrcpy会返回这个sequence
+        paste: if input widget is focus, auto paste
         inject_data: lens 10 + *
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_CLIPBOARD
@@ -119,57 +109,38 @@ class Controller:
         async with self.device.device_lock:
             await self.empty_control_socket()
             await self.inject_without_lock(inject_data)
-            return (await self.device.control_socket.read_exactly(9))[1:]
+            sequence = (await self.device.control_socket.read_exactly(9))[1:]
+            return sequence
 
-    async def set_screen_power_mode(self, mode=sc_screen_power_mode.SC_SCREEN_POWER_MODE_NORMAL):
+    async def set_screen_power_mode(self, screen_power_mode=sc_screen_power_mode.SC_SCREEN_POWER_MODE_NORMAL):
         """
         inject_data: lens 2
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_CLIPBOARD
-        inject_data = struct.pack(">BB", msg_type, mode)
+        inject_data = struct.pack(">BB", msg_type, screen_power_mode)
         await self.inject(inject_data)
         return inject_data
 
-    def swipe(
-        self,
-        start_x: int,
-        start_y: int,
-        end_x: int,
-        end_y: int,
-        move_step_length: int = 5,
-        move_steps_delay: float = 0.005,
-    ) -> None:
-        self.inject_touch_event(start_x, start_y, android_motionevent_action.AMOTION_EVENT_ACTION_DOWN)
-        next_x = start_x
-        next_y = start_y
-        if end_x > self.device.resolution[0]:
-            end_x = self.device.resolution[0]
-        if end_y > self.device.resolution[1]:
-            end_y = self.device.resolution[1]
-        decrease_x = True if start_x > end_x else False
-        decrease_y = True if start_y > end_y else False
+    def swipe(self, x, y, end_x, end_y, step=5, delay=0.005):
+        """
+        swipe (x,y) to (end_x, end_y)
+        """
+        await self.inject_touch_event(x, y, android_motionevent_action.AMOTION_EVENT_ACTION_DOWN)
+        end_x, end_y = min(end_x, self.device.resolution[0]), min(end_y, self.device.resolution[1])
         while True:
-            if decrease_x:
-                next_x -= move_step_length
-                if next_x < end_x:
-                    next_x = end_x
-            else:
-                next_x += move_step_length
-                if next_x > end_x:
-                    next_x = end_x
-            if decrease_y:
-                next_y -= move_step_length
-                if next_y < end_y:
-                    next_y = end_y
-            else:
-                next_y += move_step_length
-                if next_y > end_y:
-                    next_y = end_y
-            self.inject_touch_event(next_x, next_y, android_motionevent_action.AMOTION_EVENT_ACTION_MOVE)
-            if next_x == end_x and next_y == end_y:
-                self.inject_touch_event(next_x, next_y, android_motionevent_action.AMOTION_EVENT_ACTION_DOWN)
+            if x > end_x:
+                x -= min(x-end_x, step)
+            elif x < end_x:
+                x += min(end_x-x, step)
+            if y > end_y:
+                y -= min(y-end_y, step)
+            elif y < end_y:
+                y += min(end_y-y, step)
+            await self.inject_touch_event(x, y, android_motionevent_action.AMOTION_EVENT_ACTION_MOVE)
+            if x == end_x and y == end_y:
+                await self.inject_touch_event(x, y, android_motionevent_action.AMOTION_EVENT_ACTION_DOWN)
                 break
-            await asyncio.sleep(move_steps_delay)
+            await asyncio.sleep(delay)
 
 
 if __name__ == "__main__":
