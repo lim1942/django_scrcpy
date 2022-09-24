@@ -62,7 +62,7 @@ class Controller:
         await self.inject(inject_data)
         return inject_data
 
-    async def inject_scroll_event(self, x, y, end_x, end_y, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
+    async def inject_scroll_event(self, x, y, distance_x, distance_y, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
         buttons: android_motionevent_buttons
         inject_data: lens 25
@@ -70,7 +70,7 @@ class Controller:
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT
         x, y = max(x, 0), max(y, 0)
         inject_data = struct.pack(">BiiHHiii", msg_type, int(x), int(y), int(self.device.resolution[0]),
-                                  int(self.device.resolution[1]), int(end_x), int(end_y), buttons)
+                                  int(self.device.resolution[1]), int(distance_x), int(distance_y), buttons)
         await self.inject(inject_data)
         return inject_data
 

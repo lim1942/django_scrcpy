@@ -40,7 +40,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         """receive used to control device"""
         obj = ReceiveMsgObj()
         obj.format_text_data(text_data)
-        self.device_client.resolution = obj.resolution
+        self.device_client.resolution = obj.resolution or self.device_client.resolution
         # keycode
         if obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_KEYCODE:
             if not obj.action:
@@ -56,7 +56,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
             await self.device_client.controller.inject_touch_event(x=obj.x, y=obj.y, action=obj.action)
         # scroll
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT:
-            await self.device_client.controller.inject_scroll_event(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y)
+            await self.device_client.controller.inject_scroll_event(x=obj.x, y=obj.y, distance_x=obj.distance_x, distance_y=obj.distance_y)
         # back_or_screen_on
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_BACK_OR_SCREEN_ON:
             if not obj.action:
@@ -71,13 +71,13 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         # set_clipboard
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_CLIPBOARD:
             data = await self.device_client.controller.set_clipboard(text=obj.text, sequence=obj.sequence, paste=obj.paste)
-            await self.send(format_set_clipboard_data(data))
+            await self.send(bytes_data=format_set_clipboard_data(data))
         # set_screen_power_mode
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE:
             await self.device_client.controller.set_screen_power_mode(obj.screen_power_mode)
         # swipe
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SWIPE_EVENT:
-            await self.device_client.swipe(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y, step=obj.step, delay=obj.delay)
+            await self.device_client.controller.swipe(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y, step=obj.step, delay=obj.delay)
 
     async def disconnect(self, code):
         self.device_client.ws_client_list.remove(self)
