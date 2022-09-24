@@ -43,7 +43,11 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.device_client.resolution = obj.resolution
         # keycode
         if obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_KEYCODE:
-            await self.device_client.controller.inject_keycode(obj.keycode, action=obj.action)
+            if not obj.action:
+                await self.device_client.controller.inject_keycode(obj.keycode, action=0)
+                await self.device_client.controller.inject_keycode(obj.keycode, action=1)
+            else:
+                await self.device_client.controller.inject_keycode(obj.keycode, action=obj.action)
         # text
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TEXT:
             await self.device_client.controller.inject_text(obj.text)
@@ -55,7 +59,11 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
             await self.device_client.controller.inject_scroll_event(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y)
         # back_or_screen_on
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_BACK_OR_SCREEN_ON:
-            await self.device_client.controller.back_or_screen_on(action=obj.action)
+            if not obj.action:
+                await self.device_client.controller.back_or_screen_on(action=0)
+                await self.device_client.controller.back_or_screen_on(action=1)
+            else:
+                await self.device_client.controller.back_or_screen_on(action=obj.action)
         # get_clipboard
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_GET_CLIPBOARD:
             data = await self.device_client.controller.get_clipboard(copy_key=obj.copy_key)

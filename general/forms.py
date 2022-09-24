@@ -16,6 +16,9 @@ class MobileForm(forms.ModelForm):
     max_fps = forms.IntegerField(label='视频帧率', help_text='25, 此时最大帧率为25', required=False)
     lock_video_orientation = forms.IntegerField(label='锁定方向', help_text='-1不锁定屏幕，0为正，1，2，3为屏幕依次顺时针90°', required=False)
     crop = forms.CharField(label='裁剪尺寸', help_text="1224:1440:0:0，以(0,0)为原点的1224x1440屏幕区域", required=False)
+    control = forms.BooleanField(label="远程操控", help_text="可远程控制手机", required=False)
+    display_id = forms.IntegerField(label="录屏id", help_text="scrcpy_server的录屏id", required=False)
+    show_touches = forms.BooleanField(label="显示点击", help_text="显示屏幕点击操作", required=False)
     stay_awake = forms.BooleanField(label="保持唤醒", help_text="scrcpy连接时间设备屏幕常亮", required=False)
     codec_options = forms.CharField(label='编码参数', required=False)
     encoder_name = forms.ChoiceField(label='编码方式', choices=encoder_name_choice, required=False)
@@ -41,6 +44,12 @@ class MobileForm(forms.ModelForm):
             return config_dict.get(field_name, -1)
         elif field_name == 'crop':
             return config_dict.get(field_name, '')
+        elif field_name == 'control':
+            return config_dict.get(field_name, True)
+        elif field_name == 'display_id':
+            return config_dict.get(field_name, 0)
+        elif field_name == 'show_touches':
+            return config_dict.get(field_name, False)
         elif field_name == 'stay_awake':
             return config_dict.get(field_name, True)
         elif field_name == 'codec_options':

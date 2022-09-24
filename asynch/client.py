@@ -26,8 +26,8 @@ class DeviceClient:
             print("socket read error now")
 
     def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
-                 crop='', stay_awake=True, codec_options='', encoder_name="OMX.google.h264.encoder",
-                 send_frame_meta=True, connect_timeout=300):
+                 crop='', control=True, display_id=0, show_touches=False, stay_awake=True, codec_options='',
+                 encoder_name="OMX.google.h264.encoder", send_frame_meta=True, connect_timeout=300):
         # scrcpy_server启动参数
         self.device_id = device_id
         self.max_size = max_size
@@ -35,6 +35,9 @@ class DeviceClient:
         self.max_fps = max_fps
         self.lock_video_orientation = lock_video_orientation
         self.crop = crop
+        self.control = control
+        self.display_id = display_id
+        self.show_touches = show_touches
         self.stay_awake = stay_awake
         self.codec_options = codec_options
         self.encoder_name = encoder_name
@@ -88,9 +91,9 @@ class DeviceClient:
             f"lock_video_orientation={self.lock_video_orientation}",    # Lock screen orientation
             "tunnel_forward=true",  # Tunnel forward
             f"crop={self.crop}",  # Crop screen
-            "control=true",  # Control enabled
-            "display_id=0",  # Display id
-            "show_touches=false",  # Show touches
+            f"control={self.control}",  # Control enabled
+            f"display_id={self.display_id}",  # Display id
+            f"show_touches={self.show_touches}",  # Show touches
             f"stay_awake={self.stay_awake}",  # scrcpy server Stay awake
             f"codec_options={self.codec_options}",  # Codec (video encoding) options
             f"encoder_name={self.encoder_name}",  # Encoder name
