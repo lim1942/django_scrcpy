@@ -70,9 +70,8 @@
           }
           window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" });
           playerElement.appendChild(window.player.canvas);
-<!--            swipe 在网络差的时候适配好,没有拖拽功能-->
-<!--            add_swipe_event(window.player.canvas);-->
           add_touch_event(window.player.canvas);
+          add_swipe_event(window.player.canvas);
           add_scroll_event(window.player.canvas);
       }
 
@@ -149,7 +148,7 @@
          window.swipe_start_pix_data = null
           // 1.mousedown
          ele.addEventListener('mousedown', function (event) {
-            if(event.buttons == 1){
+            if(event.buttons == 4){
               window.swipe_start = Date.now()
               window.swipe_start_pix_data = get_position(event, this)
             }
