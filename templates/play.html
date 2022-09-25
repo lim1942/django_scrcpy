@@ -57,8 +57,29 @@
             add_swipe_event(window.player.canvas);
 		}
 
+        // 节流函数
+        function throttle(fn,during) {
+          let t = null
+          return function(e){
+              if(!t){
+                  t = setTimeout(()=>{
+                      fn.call(this,e)
+                      t = null
+                  },during)
+              }
+          }
+        }
+
+        // canvas鼠标移动事件处理函数
+		function mouse_move(event) {
+		    pix_data = get_position(event, this)
+		    inject_touch_event(pix_data, 2)
+        }
+
 		// 给canvas绑定鼠标up,down事件
 		function add_touch_event(ele){
+            // 节流的mouse_move
+            var efficient_mouse_move = throttle(mouse_move, 30);
 		    window.touch_start = null
 		    // 1.mousedown
 		   ele.addEventListener('mousedown', function (event) {
@@ -102,27 +123,6 @@
           y = Math.max(y, 0);
           return [x, y]
 		}
-
-        // 节流函数
-        function throttle(fn,during) {
-          let t = null
-          return function(e){
-              if(!t){
-                  t = setTimeout(()=>{
-                      fn.call(this,e)
-                      t = null
-                  },during)
-              }
-          }
-        }
-
-        // canvas鼠标移动事件处理函数
-		function mouse_move(event) {
-		    pix_data = get_position(event, this)
-		    inject_touch_event(pix_data, 2)
-        }
-		// 节流的mouse_move
-		var efficient_mouse_move = throttle(mouse_move, 30);
 
 		// 滑动事件
 		function add_swipe_event(ele){
