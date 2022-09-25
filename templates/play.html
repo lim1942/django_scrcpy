@@ -51,7 +51,43 @@
 		    }
             window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" });
             playerElement.appendChild(window.player.canvas);
-            add_event(window.player.canvas);
+<!--            touch 在网络好的时候更流畅-->
+<!--            add_touch_event(window.player.canvas);-->
+<!--            swipe 在网络差的时候适配好-->
+            add_swipe_event(window.player.canvas);
+		}
+
+		// 给canvas绑定鼠标up,down事件
+		function add_touch_event(ele){
+		    window.touch_start = null
+		    // 1.mousedown
+		   ele.addEventListener('mousedown', function (event) {
+		      if(event.buttons == 1){
+		        window.touch_start = true
+                this.removeEventListener("mousemove", efficient_mouse_move)
+                pix_data = get_position(event, this)
+                inject_touch_event(pix_data, 0)
+                this.addEventListener('mousemove', efficient_mouse_move)
+              }
+            })
+            // 2.mouseup
+           ele.addEventListener('mouseup', function (event) {
+              if (window.touch_start){
+                window.touch_start = false
+                pix_data = get_position(event, this)
+                inject_touch_event(pix_data, 1)
+                this.removeEventListener("mousemove", efficient_mouse_move)
+              }
+          })
+            // 3.mouseout
+          ele.addEventListener('mouseout', function (event) {
+              if (window.touch_start){
+                window.touch_start = false
+                pix_data = get_position(event, this)
+                inject_touch_event(pix_data, 1)
+                this.removeEventListener("mousemove", efficient_mouse_move)
+              }
+          })
 		}
 
 		// 获取鼠标在元素内的坐标
@@ -67,32 +103,6 @@
           return [x, y]
 		}
 
-		// 给canvas绑定鼠标up,down事件
-		function add_event(ele){
-		   ele.addEventListener('mousedown', function (event) {
-              this.removeEventListener("mousemove", efficient_mouse_move)
-           	  pix_data = get_position(event, this)
-		      inject_touch_event(pix_data, 0)
-              this.addEventListener('mousemove', efficient_mouse_move)
-            })
-           ele.addEventListener('mouseup', function (event) {
-           	  pix_data = get_position(event, this)
-		      inject_touch_event(pix_data, 1)
-              this.removeEventListener("mousemove", efficient_mouse_move)
-          })
-          ele.addEventListener('mouseout', function (event) {
-           	  pix_data = get_position(event, this)
-		      inject_touch_event(pix_data, 1)
-              this.removeEventListener("mousemove", efficient_mouse_move)
-          })
-		}
-
-		// canvas鼠标移动事件处理函数
-		function mouse_move(event) {
-		    pix_data = get_position(event, this)
-		    inject_touch_event(pix_data, 2)
-        }
-
         // 节流函数
         function throttle(fn,during) {
           let t = null
@@ -106,8 +116,49 @@
           }
         }
 
+        // canvas鼠标移动事件处理函数
+		function mouse_move(event) {
+		    pix_data = get_position(event, this)
+		    inject_touch_event(pix_data, 2)
+        }
 		// 节流的mouse_move
-		var efficient_mouse_move = throttle(mouse_move, 100);
+		var efficient_mouse_move = throttle(mouse_move, 30);
+
+		// 滑动事件
+		function add_swipe_event(ele){
+		   window.swipe_start = null
+		   window.swipe_start_pix_data = null
+		    // 1.mousedown
+		   ele.addEventListener('mousedown', function (event) {
+		      if(event.buttons == 1){
+		        window.swipe_start = Date.now()
+                window.swipe_start_pix_data = get_position(event, this)
+              }
+            })
+            // 2.mouseup
+           ele.addEventListener('mouseup', function (event) {
+              if (window.swipe_start){
+                swipe_end = Date.now()
+                delay = (swipe_end - window.swipe_start)/1000
+                window.swipe_start = null
+                swipe_end_pix_data = get_position(event, this)
+                pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
+                swipe(pix_data, delay)
+              }
+          })
+            // 3.mouseout
+          ele.addEventListener('mouseout', function (event) {
+              if (window.swipe_start){
+                swipe_end = Date.now()
+                delay = (swipe_end - window.swipe_start)/1000
+                window.swipe_start = null
+                swipe_end_pix_data = get_position(event, this)
+                pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
+                swipe(pix_data, delay)
+              }
+          })
+
+		}
 
   </script>
   <script>
@@ -175,18 +226,21 @@
 		}
 
 		// 30.swipe
-        function swipe(pix_data, step=5, delay=0.005){
-		  msg = {
-		    msg_type: 30,
-		    x: pix_data[0],
-		    y: pix_data[1],
-		    end_x: pix_data[2],
-		    end_y: pix_data[3],
-		    step: step,
-		    delay: delay,
-            resolution: [window.player.canvas.width, window.player.canvas.height],
-		  }
-		  ws.send(JSON.stringify(msg))
+        function swipe(pix_data, delay=0, unit=13){
+          delay = parseFloat(delay.toFixed(2))
+          if (delay <= 3 && delay >=0){
+            msg = {
+              msg_type: 30,
+              x: pix_data[0],
+              y: pix_data[1],
+              end_x: pix_data[2],
+              end_y: pix_data[3],
+              unit: unit,
+              delay: delay,
+              resolution: [window.player.canvas.width, window.player.canvas.height],
+            }
+            ws.send(JSON.stringify(msg))
+          }
 		}
   </script>
 </body>

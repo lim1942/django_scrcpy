@@ -30,7 +30,7 @@ class ReceiveMsgObj:
         # used for [swipe]
         self.end_x = None
         self.end_y = None
-        self.step = 5
+        self.unit = 5
         self.delay = 0.005
 
     def format_text_data(self, data):
