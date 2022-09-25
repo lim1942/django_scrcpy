@@ -3,265 +3,292 @@
   <title>{{device_id}}</title>
 </head>
 <body>
-<div id='container'></div>
+<div id='container' style="display: inline-block;"></div>
+<div style="display: inline-block; vertical-align:top;">
+  <div>
+    <input id="get_clipboard" style="height:40px;width:200px;margin-bottom:5px;">
+    <button onclick="get_clipboard()">get_clipboard</button>
+  </div>
+  <div>
+    <input id="set_clipboard" style="height:40px;width:200px;margin-bottom:5px;" placeholder="please paste here">
+    <button onclick="button_handle_set_clipboard()">set_clipboard</button>
+  </div>
+  <div>
+    <button onclick="inject_keycode(82)">menu</button>
+    <button onclick="inject_keycode(3)">home</button>
+    <button onclick="inject_keycode(4)">back</button>
+    <button onclick="inject_keycode(26)">power</button>
+    <button onclick="inject_keycode(24)">v+</button>
+    <button onclick="inject_keycode(25)">v-</button>
+  </div>
+</div>
 <!--  <script type="text/javascript" src="/static/general/js/Decoder.js"></script>-->
-  <script type="text/javascript" src="/static/general/js/YUVWebGLCanvas.js"></script>
-  <script type="text/javascript" src="/static/general/js/Player.js"></script>
-  <script >
-  		var playerElement = document.getElementById('container')
-        var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.location.href.split('?')[1]
-        var ws = new WebSocket(ws_url)
-        ws.binaryType = 'arraybuffer'
-        ws.onopen = function (e) {
-            console.log('Client connected')
-        }
-        ws.onmessage = function (msg) {
-            unit8_data = new Uint8Array(msg.data)
-            start_code = unit8_data.slice(0, 5).join('')
-            // 1.视频流数据
-            if (start_code.startsWith('0001')){
-              // 判断第一帧，重新初始化播放器，解决旋转时播放器适配问题
-              if (start_code.endsWith('103')){
-                console.log("初始化播放器")
-                init_player()
-              }
-              window.player.decode(unit8_data);
+<script type="text/javascript" src="/static/general/js/YUVWebGLCanvas.js"></script>
+<script type="text/javascript" src="/static/general/js/Player.js"></script>
+<script >
+      var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.location.href.split('?')[1]
+      var ws = new WebSocket(ws_url)
+      var playerElement = document.getElementById('container')
+      var getClipboardElement = document.getElementById('get_clipboard')
+      ws.binaryType = 'arraybuffer'
+      ws.onopen = function (e) {
+          console.log('Client connected')
+      }
+      ws.onmessage = function (msg) {
+          unit8_data = new Uint8Array(msg.data)
+          start_code = unit8_data.slice(0, 5).join('')
+          // 1.视频流数据
+          if (start_code.startsWith('0001')){
+            // 判断第一帧，重新初始化播放器，解决旋转时播放器适配问题
+            if (start_code.endsWith('103')){
+              console.log("初始化播放器")
+              init_player()
             }
-            //2.其它流数据
-            else if(start_code.startsWith('0002')){
-              data = unit8_data.slice(5)
-              if (start_code.endsWith('0')){
-                  string_data = String.fromCharCode.apply(null, data)
-                  console.log(string_data)
-              }
-              else if(start_code.endsWith('1')){
-                  console.log(data)
-              }
+            window.player.decode(unit8_data);
+          }
+          //2.其它流数据
+          else if(start_code.startsWith('0002')){
+            data = unit8_data.slice(5)
+            if (start_code.endsWith('0')){
+                string_data = new TextDecoder("utf-8").decode(data);
+                getClipboardElement.value = string_data
             }
-        }
-        ws.onclose = function (e) {
-            console.log('Client disconnected')
-        }
-  </script>
-  <script>
-        // 初始化播放器canvas
-		function init_player(){
-		    for (var child of playerElement.childNodes){
-		      playerElement.removeChild(child);
-		    }
-            window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" });
-            playerElement.appendChild(window.player.canvas);
+            else if(start_code.endsWith('1')){
+                console.log("paste_sequence:", data)
+            }
+          }
+      }
+      ws.onclose = function (e) {
+          console.log('Client disconnected')
+      }
+</script>
+<script>
+      // 初始化播放器canvas
+      function init_player(){
+          for (var child of playerElement.childNodes){
+            playerElement.removeChild(child);
+          }
+          window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" });
+          playerElement.appendChild(window.player.canvas);
 <!--            swipe 在网络差的时候适配好,没有拖拽功能-->
 <!--            add_swipe_event(window.player.canvas);-->
-            add_touch_event(window.player.canvas);
-            add_scroll_event(window.player.canvas);
-		}
+          add_touch_event(window.player.canvas);
+          add_scroll_event(window.player.canvas);
+      }
 
-        // 节流函数
-        function throttle(fn,during) {
-          let t = null
-          return function(e){
-              if(!t){
-                  t = setTimeout(()=>{
-                      fn.call(this,e)
-                      t = null
-                  },during)
-              }
-          }
+      // 节流函数
+      function throttle(fn,during) {
+        let t = null
+        return function(e){
+            if(!t){
+                t = setTimeout(()=>{
+                    fn.call(this,e)
+                    t = null
+                },during)
+            }
         }
+      }
 
-		// 获取鼠标在元素内的坐标
-        function get_position(event, ele){
-          x = event.clientX - ele.offsetLeft + window.scrollX;
-          x = parseInt(x);
-          x = Math.min(x, ele.width);
-          x = Math.max(x, 0);
-          y = event.clientY - ele.offsetTop + window.scrollY;
-          y = parseInt(y);
-          y = Math.min(y, ele.height);
-          y = Math.max(y, 0);
-          return [x, y]
-		}
+      // 获取鼠标在元素内的坐标
+      function get_position(event, ele){
+        x = event.clientX - ele.offsetLeft + window.scrollX;
+        x = parseInt(x);
+        x = Math.min(x, ele.width);
+        x = Math.max(x, 0);
+        y = event.clientY - ele.offsetTop + window.scrollY;
+        y = parseInt(y);
+        y = Math.min(y, ele.height);
+        y = Math.max(y, 0);
+        return [x, y]
+      }
 
-		// touch事件
-		function add_touch_event(ele){
-            // canvas鼠标移动事件处理函数
-            function mouse_move(event) {
-                pix_data = get_position(event, this)
-                inject_touch_event(pix_data, 2)
-            }
-            // 节流的mouse_move
-            var efficient_mouse_move = throttle(mouse_move, 30);
-            // 在window对象记录touch开始
-		    window.touch_start = null
-		    // 1.mousedown
-		   ele.addEventListener('mousedown', function (event) {
-		      if(event.buttons == 1){
-		        window.touch_start = true
-                this.removeEventListener("mousemove", efficient_mouse_move)
-                pix_data = get_position(event, this)
-                inject_touch_event(pix_data, 0)
-                this.addEventListener('mousemove', efficient_mouse_move)
-              }
-            })
-            // 2.mouseup
-           ele.addEventListener('mouseup', function (event) {
-              if (window.touch_start){
-                window.touch_start = false
-                pix_data = get_position(event, this)
-                inject_touch_event(pix_data, 1)
-                this.removeEventListener("mousemove", efficient_mouse_move)
-              }
-          })
-            // 3.mouseout
-          ele.addEventListener('mouseout', function (event) {
-              if (window.touch_start){
-                window.touch_start = false
-                pix_data = get_position(event, this)
-                inject_touch_event(pix_data, 1)
-                this.removeEventListener("mousemove", efficient_mouse_move)
-              }
-          })
-		}
-
-		// swipe事件
-		function add_swipe_event(ele){
-		   window.swipe_start = null
-		   window.swipe_start_pix_data = null
-		    // 1.mousedown
-		   ele.addEventListener('mousedown', function (event) {
-		      if(event.buttons == 1){
-		        window.swipe_start = Date.now()
-                window.swipe_start_pix_data = get_position(event, this)
-              }
-            })
-            // 2.mouseup
-           ele.addEventListener('mouseup', function (event) {
-              if (window.swipe_start){
-                swipe_end = Date.now()
-                delay = (swipe_end - window.swipe_start)/1000
-                window.swipe_start = null
-                swipe_end_pix_data = get_position(event, this)
-                pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
-                swipe(pix_data, delay)
-              }
-          })
-            // 3.mouseout
-          ele.addEventListener('mouseout', function (event) {
-              if (window.swipe_start){
-                swipe_end = Date.now()
-                delay = (swipe_end - window.swipe_start)/1000
-                window.swipe_start = null
-                swipe_end_pix_data = get_position(event, this)
-                pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
-                swipe(pix_data, delay)
-              }
-          })
-		}
-
-		// scroll事件
-		function add_scroll_event(ele){
-          function handle_scroll(event) {
+      // touch事件
+      function add_touch_event(ele){
+          // canvas鼠标移动事件处理函数
+          function mouse_move(event) {
               pix_data = get_position(event, this)
-              if (event.deltaX >0){
-                distance_x = -5
-              } else{
-                distance_x = 5
-              }
-              pix_data[2] = distance_x
-              if (event.deltaY >0){
-                distance_y = -5
-              } else{
-                distance_y = 5
-              }
-              pix_data[3] = distance_y
-              inject_scroll_event(pix_data)
-            }
-          var efficient_handle_scroll = throttle(handle_scroll, 300);
-		  ele.addEventListener("wheel", efficient_handle_scroll)
-		}
-  </script>
-  <script>
-  		// 0.keycode事件
-		function inject_keycode(keycode){
-		  msg = {
-		    msg_type: 0,
-		    keycode: keycode,
-		  }
-		  ws.send(JSON.stringify(msg))
-		}
-
-		// 1.text事件
-		function inject_text(text){
-		  msg = {
-		    msg_type: 1,
-		    text: text,
-		  }
-		  ws.send(JSON.stringify(msg))
-		}
-
-        // 2.touch事件
-		function inject_touch_event(pix_data, action){
-		  msg = {
-		    msg_type: 2,
-		    action: action,
-		    x: pix_data[0],
-		    y: pix_data[1],
-		    resolution: [window.player.canvas.width, window.player.canvas.height]
-		  }
-		  ws.send(JSON.stringify(msg))
-		}
-
-        // 3.scroll事件
-		function inject_scroll_event(pix_data){
-		  msg = {
-		    msg_type: 3,
-		    x: pix_data[0],
-		    y: pix_data[1],
-		    distance_x: pix_data[2],
-		    distance_y: pix_data[3],
-		    resolution: [window.player.canvas.width, window.player.canvas.height]
-		  }
-		  ws.send(JSON.stringify(msg))
-		}
-
-        // 8.get_clipboard
-		function get_clipboard(copy_key=1){
-		  msg = {
-		    msg_type: 8,
-            copy_key: copy_key
-		  }
-		  ws.send(JSON.stringify(msg))
-		}
-
-        // 9.set_clipboard
-		function set_clipboard(text, sequence=1, paste=true){
-		  msg = {
-		    msg_type: 9,
-            text: text,
-            sequence: sequence,
-            paste: paste
-		  }
-		  ws.send(JSON.stringify(msg))
-		}
-
-		// 30.swipe
-        function swipe(pix_data, delay=0, unit=13){
-          delay = parseFloat(delay.toFixed(2))
-          if (delay <= 3 && delay >=0){
-            msg = {
-              msg_type: 30,
-              x: pix_data[0],
-              y: pix_data[1],
-              end_x: pix_data[2],
-              end_y: pix_data[3],
-              unit: unit,
-              delay: delay,
-              resolution: [window.player.canvas.width, window.player.canvas.height],
-            }
-            ws.send(JSON.stringify(msg))
+              inject_touch_event(pix_data, 2)
           }
-		}
-  </script>
+          // 节流的mouse_move
+          var efficient_mouse_move = throttle(mouse_move, 30);
+          // 在window对象记录touch开始
+          window.touch_start = null
+          // 1.mousedown
+         ele.addEventListener('mousedown', function (event) {
+            if(event.buttons == 1){
+              window.touch_start = true
+              this.removeEventListener("mousemove", efficient_mouse_move)
+              pix_data = get_position(event, this)
+              inject_touch_event(pix_data, 0)
+              this.addEventListener('mousemove', efficient_mouse_move)
+            }
+          })
+          // 2.mouseup
+         ele.addEventListener('mouseup', function (event) {
+            if (window.touch_start){
+              window.touch_start = false
+              pix_data = get_position(event, this)
+              inject_touch_event(pix_data, 1)
+              this.removeEventListener("mousemove", efficient_mouse_move)
+            }
+        })
+          // 3.mouseout
+        ele.addEventListener('mouseout', function (event) {
+            if (window.touch_start){
+              window.touch_start = false
+              pix_data = get_position(event, this)
+              inject_touch_event(pix_data, 1)
+              this.removeEventListener("mousemove", efficient_mouse_move)
+            }
+        })
+      }
+
+      // swipe事件
+      function add_swipe_event(ele){
+         window.swipe_start = null
+         window.swipe_start_pix_data = null
+          // 1.mousedown
+         ele.addEventListener('mousedown', function (event) {
+            if(event.buttons == 1){
+              window.swipe_start = Date.now()
+              window.swipe_start_pix_data = get_position(event, this)
+            }
+          })
+          // 2.mouseup
+         ele.addEventListener('mouseup', function (event) {
+            if (window.swipe_start){
+              swipe_end = Date.now()
+              delay = (swipe_end - window.swipe_start)/1000
+              window.swipe_start = null
+              swipe_end_pix_data = get_position(event, this)
+              pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
+              swipe(pix_data, delay)
+            }
+        })
+          // 3.mouseout
+        ele.addEventListener('mouseout', function (event) {
+            if (window.swipe_start){
+              swipe_end = Date.now()
+              delay = (swipe_end - window.swipe_start)/1000
+              window.swipe_start = null
+              swipe_end_pix_data = get_position(event, this)
+              pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
+              swipe(pix_data, delay)
+            }
+        })
+      }
+
+      // scroll事件
+      function add_scroll_event(ele){
+        function handle_scroll(event) {
+            pix_data = get_position(event, this)
+            if (event.deltaX >0){
+              distance_x = -5
+            } else{
+              distance_x = 5
+            }
+            pix_data[2] = distance_x
+            if (event.deltaY >0){
+              distance_y = -5
+            } else{
+              distance_y = 5
+            }
+            pix_data[3] = distance_y
+            inject_scroll_event(pix_data)
+          }
+        var efficient_handle_scroll = throttle(handle_scroll, 300);
+        ele.addEventListener("wheel", efficient_handle_scroll)
+      }
+</script>
+<script>
+      // 0.keycode事件
+      function inject_keycode(keycode){
+        msg = {
+          msg_type: 0,
+          keycode: keycode,
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 1.text事件
+      function inject_text(text){
+        msg = {
+          msg_type: 1,
+          text: text,
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 2.touch事件
+      function inject_touch_event(pix_data, action){
+        msg = {
+          msg_type: 2,
+          action: action,
+          x: pix_data[0],
+          y: pix_data[1],
+          resolution: [window.player.canvas.width, window.player.canvas.height]
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 3.scroll事件
+      function inject_scroll_event(pix_data){
+        msg = {
+          msg_type: 3,
+          x: pix_data[0],
+          y: pix_data[1],
+          distance_x: pix_data[2],
+          distance_y: pix_data[3],
+          resolution: [window.player.canvas.width, window.player.canvas.height]
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 8.get_clipboard
+      function get_clipboard(copy_key=1){
+        msg = {
+          msg_type: 8,
+          copy_key: copy_key
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 9.set_clipboard
+      function set_clipboard(text, sequence=1, paste=true){
+        msg = {
+          msg_type: 9,
+          text: text,
+          sequence: sequence,
+          paste: paste
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 30.swipe
+      function swipe(pix_data, delay=0, unit=13){
+        delay = parseFloat(delay.toFixed(2))
+        if (delay <= 3 && delay >=0){
+          msg = {
+            msg_type: 30,
+            x: pix_data[0],
+            y: pix_data[1],
+            end_x: pix_data[2],
+            end_y: pix_data[3],
+            unit: unit,
+            delay: delay,
+            resolution: [window.player.canvas.width, window.player.canvas.height],
+          }
+          ws.send(JSON.stringify(msg))
+        }
+      }
+</script>
+<script>
+  function button_handle_set_clipboard(){
+    var ele = document.getElementById('set_clipboard')
+    if (ele.value){
+        set_clipboard(ele.value)
+    }
+  }
+</script>
 </body>
 </html>
