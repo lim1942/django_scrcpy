@@ -51,10 +51,10 @@
 		    }
             window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" });
             playerElement.appendChild(window.player.canvas);
-<!--            touch 在网络好的时候更流畅-->
-<!--            add_touch_event(window.player.canvas);-->
-<!--            swipe 在网络差的时候适配好-->
-            add_swipe_event(window.player.canvas);
+<!--            swipe 在网络差的时候适配好,没有拖拽功能-->
+<!--            add_swipe_event(window.player.canvas);-->
+            add_touch_event(window.player.canvas);
+            add_scroll_event(window.player.canvas);
 		}
 
         // 节流函数
@@ -70,16 +70,29 @@
           }
         }
 
-        // canvas鼠标移动事件处理函数
-		function mouse_move(event) {
-		    pix_data = get_position(event, this)
-		    inject_touch_event(pix_data, 2)
-        }
+		// 获取鼠标在元素内的坐标
+        function get_position(event, ele){
+          x = event.clientX - ele.offsetLeft + window.scrollX;
+          x = parseInt(x);
+          x = Math.min(x, ele.width);
+          x = Math.max(x, 0);
+          y = event.clientY - ele.offsetTop + window.scrollY;
+          y = parseInt(y);
+          y = Math.min(y, ele.height);
+          y = Math.max(y, 0);
+          return [x, y]
+		}
 
-		// 给canvas绑定鼠标up,down事件
+		// touch事件
 		function add_touch_event(ele){
+            // canvas鼠标移动事件处理函数
+            function mouse_move(event) {
+                pix_data = get_position(event, this)
+                inject_touch_event(pix_data, 2)
+            }
             // 节流的mouse_move
             var efficient_mouse_move = throttle(mouse_move, 30);
+            // 在window对象记录touch开始
 		    window.touch_start = null
 		    // 1.mousedown
 		   ele.addEventListener('mousedown', function (event) {
@@ -111,20 +124,7 @@
           })
 		}
 
-		// 获取鼠标在元素内的坐标
-        function get_position(event, ele){
-          x = event.clientX - ele.offsetLeft + window.scrollX;
-          x = parseInt(x);
-          x = Math.min(x, ele.width);
-          x = Math.max(x, 0);
-          y = event.clientY - ele.offsetTop + window.scrollY;
-          y = parseInt(y);
-          y = Math.min(y, ele.height);
-          y = Math.max(y, 0);
-          return [x, y]
-		}
-
-		// 滑动事件
+		// swipe事件
 		function add_swipe_event(ele){
 		   window.swipe_start = null
 		   window.swipe_start_pix_data = null
@@ -157,9 +157,29 @@
                 swipe(pix_data, delay)
               }
           })
-
 		}
 
+		// scroll事件
+		function add_scroll_event(ele){
+          function handle_scroll(event) {
+              pix_data = get_position(event, this)
+              if (event.deltaX >0){
+                distance_x = -5
+              } else{
+                distance_x = 5
+              }
+              pix_data[2] = distance_x
+              if (event.deltaY >0){
+                distance_y = -5
+              } else{
+                distance_y = 5
+              }
+              pix_data[3] = distance_y
+              inject_scroll_event(pix_data)
+            }
+          var efficient_handle_scroll = throttle(handle_scroll, 300);
+		  ele.addEventListener("wheel", efficient_handle_scroll)
+		}
   </script>
   <script>
   		// 0.keycode事件
