@@ -1,5 +1,7 @@
-django_scrcpy, 基于django异步框架，后端scrcpy_server.jar获取手机h264流，前端broardway.js播放h264流。
-先配置好adb，手机设备打开usb调试并连接项目所在的电脑主机。基于python3.7
+django_scrcpy
+
+基于python3.7, django异步框架，后端scrcpy_server.jar获取手机h264流，视频推流采用websocket，前端broardway.js播放h264流。
+先配置好adb，手机设备打开usb调试并连接项目所在的电脑主机，本地浏览器画面和手机画面延迟大概80ms左右。
 
 1.运行：
  (1).安装依赖
