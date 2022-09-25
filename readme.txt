@@ -2,7 +2,7 @@ django_scrcpy
 
 基于python3.7, django异步框架，后端scrcpy_server.jar获取手机h264流，视频推流采用websocket，前端broardway.js播放h264流。
 先配置好adb，手机设备打开usb调试并连接项目所在的电脑主机。
-经测试在 720X336分辨率，800k比特率，25帧，本地浏览器延迟大概为30ms左右。
+经测试在usb2.0, 720X336分辨率，800k比特率，25帧，本地浏览器延迟大概为100ms左右。
 
 1.运行：
  (1).安装依赖
