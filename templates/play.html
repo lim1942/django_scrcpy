@@ -14,20 +14,37 @@
     <button onclick="button_handle_set_clipboard()">set_clipboard</button>
   </div>
   <div>
-    <button onclick="inject_keycode(82)">menu</button>
-    <button onclick="inject_keycode(3)">home</button>
-    <button onclick="inject_keycode(4)">back</button>
-  </div>
-  <div>
+    <a id="capture"></a><button onclick="button_handle_capture()">capture</button>
     <button onclick="inject_keycode(24)">v+</button>
     <button onclick="inject_keycode(25)">v-</button>
     <button id="power">power</button>
+  </div>
+  <div>
+    <button onclick="inject_keycode(82)">menu</button>
+    <button onclick="inject_keycode(3)">home</button>
+    <button onclick="inject_keycode(4)">back</button>
   </div>
 </div>
 <!--  <script type="text/javascript" src="/static/general/js/Decoder.js"></script>-->
 <script type="text/javascript" src="/static/general/js/YUVWebGLCanvas.js"></script>
 <script type="text/javascript" src="/static/general/js/Player.js"></script>
 <script >
+      // 记录device_id到window
+      window.device_id =  "{{device_id}}"
+      // 获取日期字符串
+      Date.prototype.formatCode = function (formatStr = "yyyy-MM-DD HH:mm:ss") {
+        const paddingZero = num => num >= 10 ? num : '0' + num;
+        let str = formatStr;
+        str = str.replace(/yyyy|YYYY/, this.getFullYear());
+        str = str.replace(/MM/, paddingZero(this.getMonth() + 1));
+        str = str.replace(/dd|DD/, paddingZero(this.getDate()));
+        str = str.replace(/hh|HH/, paddingZero(this.getHours()));
+        str = str.replace(/mm/, paddingZero(this.getMinutes()));
+        str = str.replace(/ss/, paddingZero(this.getSeconds()));
+        str = str.replace(/SS/, paddingZero(this.getMilliseconds()));
+        return str;
+      };
+
       var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.location.href.split('?')[1]
       var ws = new WebSocket(ws_url)
       var playerElement = document.getElementById('container')
@@ -70,7 +87,7 @@
           for (var child of playerElement.childNodes){
             playerElement.removeChild(child);
           }
-          window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" });
+          window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
           playerElement.appendChild(window.player.canvas);
           add_canvas_touch_event(window.player.canvas);
           add_canvas_swipe_event(window.player.canvas);
@@ -215,6 +232,14 @@
         set_clipboard(ele.value)
         ele.value = ''
     }
+  }
+
+  // 处理截图
+  function button_handle_capture(){
+      var ele = document.getElementById('capture')
+      ele.href = player.canvas.toDataURL()
+      ele.download = window.device_id + '_' + (new Date().formatCode()) + '.png'
+      ele.click()
   }
 
   // 处理button长按事件

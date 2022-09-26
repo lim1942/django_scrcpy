@@ -65,6 +65,9 @@ p.decode(<binary>);
   
   
   var Player = function(parOptions){
+    // 为true时，webgl才可以截图
+    window.preserveDrawingBuffer = parOptions.preserveDrawingBuffer
+
     var self = this;
     this._config = parOptions || {};
     

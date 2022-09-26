@@ -600,7 +600,11 @@
       },
       onInitWebGL: function () {
         try {
-          this.gl = this.canvas.getContext("experimental-webgl");
+          if (window.preserveDrawingBuffer){
+            this.gl = this.canvas.getContext("experimental-webgl",{preserveDrawingBuffer: true})
+          }else {
+            this.gl = this.canvas.getContext("experimental-webgl")
+          }
         } catch(e) {}
 
         if (!this.gl) {
