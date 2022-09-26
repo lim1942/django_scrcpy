@@ -43,7 +43,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.device_client.resolution = obj.resolution or self.device_client.resolution
         # keycode
         if obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_KEYCODE:
-            if not obj.action:
+            if obj.action is None:
                 await self.device_client.controller.inject_keycode(obj.keycode, action=0)
                 await self.device_client.controller.inject_keycode(obj.keycode, action=1)
             else:

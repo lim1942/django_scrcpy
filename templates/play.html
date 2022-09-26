@@ -17,9 +17,11 @@
     <button onclick="inject_keycode(82)">menu</button>
     <button onclick="inject_keycode(3)">home</button>
     <button onclick="inject_keycode(4)">back</button>
-    <button onclick="inject_keycode(26)">power</button>
+  </div>
+  <div>
     <button onclick="inject_keycode(24)">v+</button>
     <button onclick="inject_keycode(25)">v-</button>
+    <button id="power">power</button>
   </div>
 </div>
 <!--  <script type="text/javascript" src="/static/general/js/Decoder.js"></script>-->
@@ -70,9 +72,9 @@
           }
           window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js" });
           playerElement.appendChild(window.player.canvas);
-          add_touch_event(window.player.canvas);
-          add_swipe_event(window.player.canvas);
-          add_scroll_event(window.player.canvas);
+          add_canvas_touch_event(window.player.canvas);
+          add_canvas_swipe_event(window.player.canvas);
+          add_canvas_scroll_event(window.player.canvas);
       }
 
       // 节流函数
@@ -89,7 +91,7 @@
       }
 
       // 获取鼠标在元素内的坐标
-      function get_position(event, ele){
+      function get_pointer_position(event, ele){
         x = event.clientX - ele.offsetLeft + window.scrollX;
         x = parseInt(x);
         x = Math.min(x, ele.width);
@@ -101,56 +103,57 @@
         return [x, y]
       }
 
+      // canvas鼠标移动事件处理函数
+      function canvas_mouse_move(event) {
+          pix_data = get_pointer_position(event, this)
+          inject_touch_event(pix_data, 2)
+      }
+      // 节流的mouse_move
+      var efficient_canvas_mouse_move = throttle(canvas_mouse_move, 30);
+
       // touch事件
-      function add_touch_event(ele){
-          // canvas鼠标移动事件处理函数
-          function mouse_move(event) {
-              pix_data = get_position(event, this)
-              inject_touch_event(pix_data, 2)
-          }
-          // 节流的mouse_move
-          var efficient_mouse_move = throttle(mouse_move, 30);
+      function add_canvas_touch_event(ele){
           // 在window对象记录touch开始
           window.touch_start = null
           // 1.mousedown
          ele.addEventListener('mousedown', function (event) {
             if(event.buttons == 1){
               window.touch_start = true
-              this.removeEventListener("mousemove", efficient_mouse_move)
-              pix_data = get_position(event, this)
+              this.removeEventListener("mousemove", efficient_canvas_mouse_move)
+              pix_data = get_pointer_position(event, this)
               inject_touch_event(pix_data, 0)
-              this.addEventListener('mousemove', efficient_mouse_move)
+              this.addEventListener('mousemove', efficient_canvas_mouse_move)
             }
           })
           // 2.mouseup
          ele.addEventListener('mouseup', function (event) {
             if (window.touch_start){
               window.touch_start = false
-              pix_data = get_position(event, this)
+              pix_data = get_pointer_position(event, this)
               inject_touch_event(pix_data, 1)
-              this.removeEventListener("mousemove", efficient_mouse_move)
+              this.removeEventListener("mousemove", efficient_canvas_mouse_move)
             }
         })
           // 3.mouseout
         ele.addEventListener('mouseout', function (event) {
             if (window.touch_start){
               window.touch_start = false
-              pix_data = get_position(event, this)
+              pix_data = get_pointer_position(event, this)
               inject_touch_event(pix_data, 1)
-              this.removeEventListener("mousemove", efficient_mouse_move)
+              this.removeEventListener("mousemove", efficient_canvas_mouse_move)
             }
         })
       }
 
       // swipe事件
-      function add_swipe_event(ele){
+      function add_canvas_swipe_event(ele){
          window.swipe_start = null
          window.swipe_start_pix_data = null
           // 1.mousedown
          ele.addEventListener('mousedown', function (event) {
             if(event.buttons == 4){
               window.swipe_start = Date.now()
-              window.swipe_start_pix_data = get_position(event, this)
+              window.swipe_start_pix_data = get_pointer_position(event, this)
             }
           })
           // 2.mouseup
@@ -159,8 +162,9 @@
               swipe_end = Date.now()
               delay = (swipe_end - window.swipe_start)/1000
               window.swipe_start = null
-              swipe_end_pix_data = get_position(event, this)
+              swipe_end_pix_data = get_pointer_position(event, this)
               pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
+              window.swipe_start_pix_data = null
               swipe(pix_data, delay)
             }
         })
@@ -170,41 +174,88 @@
               swipe_end = Date.now()
               delay = (swipe_end - window.swipe_start)/1000
               window.swipe_start = null
-              swipe_end_pix_data = get_position(event, this)
+              swipe_end_pix_data = get_pointer_position(event, this)
               pix_data = window.swipe_start_pix_data.concat(swipe_end_pix_data)
+              window.swipe_start_pix_data = null
               swipe(pix_data, delay)
             }
         })
       }
 
+      // 处理canvas mouse scroll
+      function canvas_mouse_scroll(event) {
+        pix_data = get_pointer_position(event, this)
+        if (event.deltaX >0){
+          distance_x = -5
+        } else{
+          distance_x = 5
+        }
+        pix_data[2] = distance_x
+        if (event.deltaY >0){
+          distance_y = -5
+        } else{
+          distance_y = 5
+        }
+        pix_data[3] = distance_y
+        inject_scroll_event(pix_data)
+      }
+      // 节流的canvas_mouse_scroll
+      var efficient_canvas_mouse_scroll = throttle(canvas_mouse_scroll, 300);
+
       // scroll事件
-      function add_scroll_event(ele){
-        function handle_scroll(event) {
-            pix_data = get_position(event, this)
-            if (event.deltaX >0){
-              distance_x = -5
-            } else{
-              distance_x = 5
-            }
-            pix_data[2] = distance_x
-            if (event.deltaY >0){
-              distance_y = -5
-            } else{
-              distance_y = 5
-            }
-            pix_data[3] = distance_y
-            inject_scroll_event(pix_data)
-          }
-        var efficient_handle_scroll = throttle(handle_scroll, 300);
-        ele.addEventListener("wheel", efficient_handle_scroll)
+      function add_canvas_scroll_event(ele){
+        ele.addEventListener("wheel", efficient_canvas_mouse_scroll)
       }
 </script>
 <script>
+  // 处理设置剪切板
+  function button_handle_set_clipboard(){
+    var ele = document.getElementById('set_clipboard')
+    if (ele.value){
+        set_clipboard(ele.value)
+    }
+  }
+
+  // 处理button长按事件
+  function button_mouse_up_down(ele, keycode){
+     button_mouse_up_down_keycode = 'button_mouse_up_down' + keycode
+     window.button_mouse_up_down_keycode = null
+     // 1.mousedown
+     ele.addEventListener('mousedown', function (event) {
+        if(event.buttons == 1){
+          inject_keycode(keycode, 0)
+          window.button_mouse_up_down_keycode = true
+        }
+      })
+      // 2.mouseup
+     ele.addEventListener('mouseup', function (event) {
+       if (window.button_mouse_up_down_keycode){
+         inject_keycode(keycode, 1)
+         window.button_mouse_up_down_keycode = null
+       }
+     })
+      // 3.mouseout
+     ele.addEventListener('mouseout', function (event) {
+       if (window.button_mouse_up_down_keycode){
+         inject_keycode(keycode, 1)
+         window.button_mouse_up_down_keycode = null
+       }
+     })
+  }
+
+  // 给power键添加button_mouse_up_down
+  var power_button = document.getElementById('power')
+  button_mouse_up_down(power_button, 26)
+
+
+</script>
+<script>
       // 0.keycode事件
-      function inject_keycode(keycode){
+      function inject_keycode(keycode, action){
         msg = {
           msg_type: 0,
           keycode: keycode,
+          action: action
         }
         ws.send(JSON.stringify(msg))
       }
@@ -280,14 +331,6 @@
           ws.send(JSON.stringify(msg))
         }
       }
-</script>
-<script>
-  function button_handle_set_clipboard(){
-    var ele = document.getElementById('set_clipboard')
-    if (ele.value){
-        set_clipboard(ele.value)
-    }
-  }
 </script>
 </body>
 </html>

@@ -12,7 +12,7 @@ class MobileForm(forms.ModelForm):
         ('c2.android.avc.encoder', 'c2.android.avc.encoder'),
     )
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)
-    bit_rate = forms.IntegerField(label='比特率', help_text='800, 此时比特率为800', required=False)
+    bit_rate = forms.IntegerField(label='比特率', help_text='800000, 此时比特率为800kbs', required=False)
     max_fps = forms.IntegerField(label='视频帧率', help_text='25, 此时最大帧率为25', required=False)
     lock_video_orientation = forms.IntegerField(label='锁定方向', help_text='-1不锁定屏幕，0为正，1，2，3为屏幕依次顺时针90°', required=False)
     crop = forms.CharField(label='裁剪尺寸', help_text="1224:1440:0:0，以(0,0)为原点的1224x1440屏幕区域", required=False)
