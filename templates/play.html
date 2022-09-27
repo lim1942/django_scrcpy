@@ -14,15 +14,18 @@
     <button onclick="button_handle_set_clipboard()">set_clipboard</button>
   </div>
   <div>
-    <a id="capture"></a><button onclick="button_handle_capture()">capture</button>
-    <button onclick="inject_keycode(24)">v+</button>
-    <button onclick="inject_keycode(25)">v-</button>
-    <button id="power">power</button>
+     <a id="capture"></a><button onclick="button_handle_capture()">capture</button>
+    <button onclick="button_handle_capture_inside()">capture-inside</button>
   </div>
   <div>
     <button onclick="inject_keycode(82)">menu</button>
     <button onclick="inject_keycode(3)">home</button>
     <button onclick="inject_keycode(4)">back</button>
+  </div>
+  <div>
+    <button onclick="inject_keycode(24)">v+</button>
+    <button onclick="inject_keycode(25)">v-</button>
+    <button id="power">power</button>
   </div>
 </div>
 <!--  <script type="text/javascript" src="/static/general/js/Decoder.js"></script>-->
@@ -242,6 +245,14 @@
       ele.click()
   }
 
+  // 处理内部截图
+  function button_handle_capture_inside(){
+    inject_keycode(26, 0)
+    inject_keycode(25, 0)
+    inject_keycode(25, 1)
+    inject_keycode(26, 1)
+  }
+
   // 处理button长按事件
   function button_mouse_up_down(ele, keycode){
      button_mouse_up_down_keycode = 'button_mouse_up_down' + keycode
@@ -272,8 +283,6 @@
   // 给power键添加button_mouse_up_down
   var power_button = document.getElementById('power')
   button_mouse_up_down(power_button, 26)
-
-
 </script>
 <script>
       // 0.keycode事件

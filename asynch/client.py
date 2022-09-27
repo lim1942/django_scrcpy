@@ -23,7 +23,7 @@ class DeviceClient:
         except asyncio.CancelledError:
             print("task is cancelled now")
         except asyncio.streams.IncompleteReadError:
-            print("socket read error now")
+            print("socket is close now")
 
     def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
                  crop='', control=True, display_id=0, show_touches=False, stay_awake=True, codec_options='',
@@ -157,7 +157,7 @@ class DeviceClient:
             self.control_socket = None
         if self.deploy_process:
             self.shell(self.get_command(["shell", "\"ps -ef | grep scrcpy |awk '{print $2}' |xargs kill -9\""])).wait()
-            self.deploy_process.wait()
+            self.deploy_process.terminate()
             self.deploy_process = None
         if self.video_task:
             await self.cancel_task(self.video_task)

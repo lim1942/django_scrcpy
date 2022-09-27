@@ -82,4 +82,5 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
     async def disconnect(self, code):
         self.device_client.ws_client_list.remove(self)
         if not self.device_client.ws_client_list:
-            await self.device_client.stop()
+            async with self.device_client.device_lock:
+                await self.device_client.stop()
