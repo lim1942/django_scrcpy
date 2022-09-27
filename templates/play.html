@@ -220,7 +220,7 @@
         inject_scroll_event(pix_data)
       }
       // 节流的canvas_mouse_scroll
-      var efficient_canvas_mouse_scroll = throttle(canvas_mouse_scroll, 300);
+      var efficient_canvas_mouse_scroll = throttle(canvas_mouse_scroll, 100);
 
       // scroll事件
       function add_canvas_scroll_event(ele){
