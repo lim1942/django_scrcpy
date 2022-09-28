@@ -53,7 +53,7 @@ class MobileForm(forms.ModelForm):
         elif field_name == 'stay_awake':
             return config_dict.get(field_name, True)
         elif field_name == 'codec_options':
-            return config_dict.get(field_name, '')
+            return config_dict.get(field_name, "profile=1,level=2")
         elif field_name == 'encoder_name':
             return config_dict.get(field_name, 'OMX.google.h264.encoder')
         elif field_name == 'send_frame_meta':

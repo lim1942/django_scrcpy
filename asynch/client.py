@@ -26,7 +26,7 @@ class DeviceClient:
             print("socket is close now")
 
     def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
-                 crop='', control=True, display_id=0, show_touches=False, stay_awake=True, codec_options='',
+                 crop='', control=True, display_id=0, show_touches=False, stay_awake=True, codec_options="profile=1,level=2",
                  encoder_name="OMX.google.h264.encoder", send_frame_meta=True, connect_timeout=300):
         # scrcpy_server启动参数
         self.device_id = device_id
