@@ -28,75 +28,93 @@
     <button id="power">power</button>
   </div>
 </div>
-<!--  <script type="text/javascript" src="/static/general/js/Decoder.js"></script>-->
-<script type="text/javascript" src="/static/general/js/YUVWebGLCanvas.js"></script>
+  <script type="text/javascript" src="/static/general/js/Decoder.js"></script>
+<script type="text/javascript" src="/static/general/js/YUVCanvas.js"></script>
 <script type="text/javascript" src="/static/general/js/Player.js"></script>
-<script >
-      // 记录device_id到window
-      window.device_id =  "{{device_id}}"
-      // 获取日期字符串
-      Date.prototype.formatCode = function (formatStr = "yyyy-MM-DD HH:mm:ss") {
-        const paddingZero = num => num >= 10 ? num : '0' + num;
-        let str = formatStr;
-        str = str.replace(/yyyy|YYYY/, this.getFullYear());
-        str = str.replace(/MM/, paddingZero(this.getMonth() + 1));
-        str = str.replace(/dd|DD/, paddingZero(this.getDate()));
-        str = str.replace(/hh|HH/, paddingZero(this.getHours()));
-        str = str.replace(/mm/, paddingZero(this.getMinutes()));
-        str = str.replace(/ss/, paddingZero(this.getSeconds()));
-        str = str.replace(/SS/, paddingZero(this.getMilliseconds()));
-        return str;
-      };
+<script>
+      // 0.keycode事件
+      function inject_keycode(keycode, action){
+        msg = {
+          msg_type: 0,
+          keycode: keycode,
+          action: action
+        }
+        ws.send(JSON.stringify(msg))
+      }
 
-      var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.location.href.split('?')[1]
-      var ws = new WebSocket(ws_url)
-      var playerElement = document.getElementById('container')
-      var getClipboardElement = document.getElementById('get_clipboard')
-      ws.binaryType = 'arraybuffer'
-      ws.onopen = function (e) {
-          console.log('Client connected')
+      // 1.text事件
+      function inject_text(text){
+        msg = {
+          msg_type: 1,
+          text: text,
+        }
+        ws.send(JSON.stringify(msg))
       }
-      ws.onmessage = function (msg) {
-          unit8_data = new Uint8Array(msg.data)
-          start_code = unit8_data.slice(0, 5).join('')
-          // 1.视频流数据
-          if (start_code.startsWith('0001')){
-            // 判断第一帧，重新初始化播放器，解决旋转时播放器适配问题
-            if (start_code.endsWith('103')){
-              console.log("初始化播放器")
-              init_player()
-            }
-            window.player.decode(unit8_data);
-          }
-          //2.其它流数据
-          else if(start_code.startsWith('0002')){
-            data = unit8_data.slice(5)
-            if (start_code.endsWith('0')){
-                string_data = new TextDecoder("utf-8").decode(data);
-                getClipboardElement.value = string_data
-            }
-            else if(start_code.endsWith('1')){
-                console.log("paste_sequence:", data)
-            }
-          }
+
+      // 2.touch事件
+      function inject_touch_event(pix_data, action){
+        msg = {
+          msg_type: 2,
+          action: action,
+          x: pix_data[0],
+          y: pix_data[1],
+          resolution: [window.player.canvas.width, window.player.canvas.height]
+        }
+        ws.send(JSON.stringify(msg))
       }
-      ws.onclose = function (e) {
-          console.log('Client disconnected')
+
+      // 3.scroll事件
+      function inject_scroll_event(pix_data){
+        msg = {
+          msg_type: 3,
+          x: pix_data[0],
+          y: pix_data[1],
+          distance_x: pix_data[2],
+          distance_y: pix_data[3],
+          resolution: [window.player.canvas.width, window.player.canvas.height]
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 8.get_clipboard
+      function get_clipboard(copy_key=1){
+        msg = {
+          msg_type: 8,
+          copy_key: copy_key
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 9.set_clipboard
+      function set_clipboard(text, sequence=1, paste=true){
+        msg = {
+          msg_type: 9,
+          text: text,
+          sequence: sequence,
+          paste: paste
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 30.swipe
+      function swipe(pix_data, delay=0, unit=13){
+        delay = parseFloat(delay.toFixed(2))
+        if (delay <= 3 && delay >=0){
+          msg = {
+            msg_type: 30,
+            x: pix_data[0],
+            y: pix_data[1],
+            end_x: pix_data[2],
+            end_y: pix_data[3],
+            unit: unit,
+            delay: delay,
+            resolution: [window.player.canvas.width, window.player.canvas.height],
+          }
+          ws.send(JSON.stringify(msg))
+        }
       }
 </script>
 <script>
-      // 初始化播放器canvas
-      function init_player(){
-          for (var child of playerElement.childNodes){
-            playerElement.removeChild(child);
-          }
-          window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
-          playerElement.appendChild(window.player.canvas);
-          add_canvas_touch_event(window.player.canvas);
-          add_canvas_swipe_event(window.player.canvas);
-          add_canvas_scroll_event(window.player.canvas);
-      }
-
       // 节流函数
       function throttle(fn,during) {
         let t = null
@@ -128,13 +146,13 @@
           pix_data = get_pointer_position(event, this)
           inject_touch_event(pix_data, 2)
       }
-      // 节流的mouse_move
-      var efficient_canvas_mouse_move = throttle(canvas_mouse_move, 30);
 
       // touch事件
       function add_canvas_touch_event(ele){
           // 在window对象记录touch开始
           window.touch_start = null
+          // 节流的mouse_move
+          efficient_canvas_mouse_move = throttle(canvas_mouse_move, 30);
           // 1.mousedown
          ele.addEventListener('mousedown', function (event) {
             if(event.buttons == 1){
@@ -219,11 +237,10 @@
         pix_data[3] = distance_y
         inject_scroll_event(pix_data)
       }
-      // 节流的canvas_mouse_scroll
-      var efficient_canvas_mouse_scroll = throttle(canvas_mouse_scroll, 100);
 
       // scroll事件
       function add_canvas_scroll_event(ele){
+        efficient_canvas_mouse_scroll = throttle(canvas_mouse_scroll, 100);
         ele.addEventListener("wheel", efficient_canvas_mouse_scroll)
       }
 </script>
@@ -279,92 +296,60 @@
        }
      })
   }
-
-  // 给power键添加button_mouse_up_down
-  var power_button = document.getElementById('power')
-  button_mouse_up_down(power_button, 26)
 </script>
-<script>
-      // 0.keycode事件
-      function inject_keycode(keycode, action){
-        msg = {
-          msg_type: 0,
-          keycode: keycode,
-          action: action
-        }
-        ws.send(JSON.stringify(msg))
+<script >
+      // 1.记录device_id到window对象
+      window.device_id =  "{{device_id}}"
+      // 2.给Date对象增加时间格式化方法
+      Date.prototype.formatCode = function (formatStr = "yyyy-MM-DD HH:mm:ss") {
+        const paddingZero = num => num >= 10 ? num : '0' + num;
+        let str = formatStr;
+        str = str.replace(/yyyy|YYYY/, this.getFullYear());
+        str = str.replace(/MM/, paddingZero(this.getMonth() + 1));
+        str = str.replace(/dd|DD/, paddingZero(this.getDate()));
+        str = str.replace(/hh|HH/, paddingZero(this.getHours()));
+        str = str.replace(/mm/, paddingZero(this.getMinutes()));
+        str = str.replace(/ss/, paddingZero(this.getSeconds()));
+        str = str.replace(/SS/, paddingZero(this.getMilliseconds()));
+        return str;
+      };
+      // 3.给power键添加长按事件
+      button_mouse_up_down(document.getElementById('power'), 26)
+      // 4.初始化播放器, 给播放器添加事件监听，播放器增加到dom中
+      var playerElement = document.getElementById('container')
+      window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
+      playerElement.appendChild(window.player.canvas);
+      add_canvas_touch_event(window.player.canvas);
+      add_canvas_swipe_event(window.player.canvas);
+      add_canvas_scroll_event(window.player.canvas);
+      // 5.初始化websocket
+      var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.location.href.split('?')[1]
+      var ws = new WebSocket(ws_url)
+      ws.binaryType = 'arraybuffer'
+      ws.onopen = function (e) {
+          console.log('Client connected')
       }
-
-      // 1.text事件
-      function inject_text(text){
-        msg = {
-          msg_type: 1,
-          text: text,
-        }
-        ws.send(JSON.stringify(msg))
-      }
-
-      // 2.touch事件
-      function inject_touch_event(pix_data, action){
-        msg = {
-          msg_type: 2,
-          action: action,
-          x: pix_data[0],
-          y: pix_data[1],
-          resolution: [window.player.canvas.width, window.player.canvas.height]
-        }
-        ws.send(JSON.stringify(msg))
-      }
-
-      // 3.scroll事件
-      function inject_scroll_event(pix_data){
-        msg = {
-          msg_type: 3,
-          x: pix_data[0],
-          y: pix_data[1],
-          distance_x: pix_data[2],
-          distance_y: pix_data[3],
-          resolution: [window.player.canvas.width, window.player.canvas.height]
-        }
-        ws.send(JSON.stringify(msg))
-      }
-
-      // 8.get_clipboard
-      function get_clipboard(copy_key=1){
-        msg = {
-          msg_type: 8,
-          copy_key: copy_key
-        }
-        ws.send(JSON.stringify(msg))
-      }
-
-      // 9.set_clipboard
-      function set_clipboard(text, sequence=1, paste=true){
-        msg = {
-          msg_type: 9,
-          text: text,
-          sequence: sequence,
-          paste: paste
-        }
-        ws.send(JSON.stringify(msg))
-      }
-
-      // 30.swipe
-      function swipe(pix_data, delay=0, unit=13){
-        delay = parseFloat(delay.toFixed(2))
-        if (delay <= 3 && delay >=0){
-          msg = {
-            msg_type: 30,
-            x: pix_data[0],
-            y: pix_data[1],
-            end_x: pix_data[2],
-            end_y: pix_data[3],
-            unit: unit,
-            delay: delay,
-            resolution: [window.player.canvas.width, window.player.canvas.height],
+      ws.onmessage = function (msg) {
+          unit8_data = new Uint8Array(msg.data)
+          start_code = unit8_data.slice(0, 5).join('')
+          // 1.视频流数据
+          if (start_code.startsWith('0001')){
+            window.player.decode(unit8_data);
           }
-          ws.send(JSON.stringify(msg))
-        }
+          //2.其它流数据
+          else if(start_code.startsWith('0002')){
+            data = unit8_data.slice(5)
+            if (start_code.endsWith('0')){
+                string_data = new TextDecoder("utf-8").decode(data);
+                document.getElementById('get_clipboard').value = string_data
+            }
+            else if(start_code.endsWith('1')){
+                console.log("paste_sequence:", data)
+            }
+          }
+      }
+      ws.onclose = function (e) {
+          console.log('Client disconnected')
       }
 </script>
 </body>
