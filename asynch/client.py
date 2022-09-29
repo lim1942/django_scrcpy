@@ -73,8 +73,7 @@ class DeviceClient:
     async def prepare_server(self):
         # 1.推送jar包
         server_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scrcpy-server-v1.24")
-        commands1 = ['adb -s', self.device_id, 'push', server_file_path, f"/data/local/tmp/scrcpy-server.jar"]
-        os.system(' '.join(commands1))
+        await self.adb_device.push_file(server_file_path, "/data/local/tmp/scrcpy-server.jar")
         # 2.启动一个adb socket去部署scrcpy_server
         commands2 = [
             "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
