@@ -69,11 +69,16 @@ class DeviceClient:
         print(f"update {self.device_id} to {kwargs}")
 
     def update_resolution(self, current_nal_data):
+        # when read a sps frame, change origin resolution
         if current_nal_data.startswith(b'\x00\x00\x00\x01g'):
+            # sps resolution not equal device resolution, so reuse and transform original resolution
             sps = SPS(BitStream(current_nal_data[5:]), False)
             width = (sps.pic_width_in_mbs_minus_1 + 1) * 16
             height = (2 - sps.frame_mbs_only_flag) * (sps.pic_height_in_map_units_minus_1 + 1) * 16
-            resolution = (width, height)
+            if width > height:
+                resolution = (max(self.resolution), min(self.resolution))
+            else:
+                resolution = (min(self.resolution), max(self.resolution))
             print(f'update {self.device_id} resolution {self.resolution} to {resolution}')
             self.resolution = resolution
 
