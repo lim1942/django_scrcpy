@@ -14,18 +14,24 @@
     <button onclick="button_handle_set_clipboard()">set_clipboard</button>
   </div>
   <div>
-     <a id="capture"></a><button onclick="button_handle_capture()">capture</button>
-    <button onclick="button_handle_capture_inside()">capture-inside</button>
-  </div>
-  <div>
+    <input id="Checkbox_menu" type="checkbox" value="82"/>
     <button onclick="inject_keycode(82)">menu</button>
+    <input id="Checkbox_home" type="checkbox" value="3"/>
     <button onclick="inject_keycode(3)">home</button>
+    <input id="Checkbox_back" type="checkbox" value="4"/>
     <button onclick="inject_keycode(4)">back</button>
   </div>
   <div>
+    <input id="Checkbox_v+" type="checkbox" value="24"/>
     <button onclick="inject_keycode(24)">v+</button>
+    <input id="Checkbox_v-" type="checkbox" value="25"/>
     <button onclick="inject_keycode(25)">v-</button>
+    <input id="Checkbox_power" type="checkbox" value="26"/>
     <button id="power">power</button>
+  </div>
+  <div>
+    <a id="capture"></a><button onclick="button_handle_capture()">capture</button>
+    <button onclick="button_handle_multi_key()">multi-key</button>
   </div>
 </div>
 <script type="text/javascript" src="/static/general/js/Decoder.js"></script>
@@ -259,12 +265,23 @@
       ele.click()
   }
 
-  // 处理内部截图
-  function button_handle_capture_inside(){
-    inject_keycode(26, 0)
-    inject_keycode(25, 0)
-    inject_keycode(25, 1)
-    inject_keycode(26, 1)
+  // 处理同时按2个键
+  function button_handle_multi_key(){
+    key_list = ['menu', 'home', 'back', 'v+', 'v-', 'power']
+    checked_key_list = []
+    for (var key of key_list){
+      checkbox = document.getElementById('Checkbox_' + key)
+      if (checkbox.checked){
+         checked_key_list.push(parseInt(checkbox.value))
+      }
+      if (checked_key_list.length==2){
+        break
+      }
+    }
+    inject_keycode(checked_key_list[0], 0)
+    inject_keycode(checked_key_list[1], 0)
+    inject_keycode(checked_key_list[1], 1)
+    inject_keycode(checked_key_list[0], 1)
   }
 
   // 处理button长按事件
