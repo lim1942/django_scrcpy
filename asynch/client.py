@@ -2,7 +2,9 @@ import os
 import struct
 import asyncio
 import subprocess
+from bitstring import BitStream
 
+from h26x_extractor.nalutypes import SPS
 from asynch.asocket import AsyncAdbSocket
 from asynch.controller import Controller
 
@@ -66,6 +68,15 @@ class DeviceClient:
             setattr(self, k, v)
         print(f"update {self.device_id} to {kwargs}")
 
+    def update_resolution(self, current_nal_data):
+        if current_nal_data.startswith(b'\x00\x00\x00\x01g'):
+            sps = SPS(BitStream(current_nal_data[5:]), False)
+            width = (sps.pic_width_in_mbs_minus_1 + 1) * 16
+            height = (2 - sps.frame_mbs_only_flag) * (sps.pic_height_in_map_units_minus_1 + 1) * 16
+            resolution = (width, height)
+            print(f'update {self.device_id} resolution {self.resolution} to {resolution}')
+            self.resolution = resolution
+
     def get_command(self, cmd_list):
         command = ' '.join(cmd_list)
         if not command.startswith('adb'):
@@ -126,6 +137,7 @@ class DeviceClient:
         while True:
             data = await self.video_socket.read_until(b'\x00\x00\x00\x01')
             current_nal_data = b'\x00\x00\x00\x01' + data.rstrip(b'\x00\x00\x00\x01')
+            self.update_resolution(current_nal_data)
             for ws_client in self.ws_client_list:
                 await ws_client.send(bytes_data=current_nal_data)
 
@@ -135,8 +147,9 @@ class DeviceClient:
             # 1.读取frame_meta
             frame_meta = await self.video_socket.read_exactly(12)
             data_length = struct.unpack('>L', frame_meta[8:])[0]
-            # 2.向客户端发送当前nal
             current_nal_data = await self.video_socket.read_exactly(data_length)
+            self.update_resolution(current_nal_data)
+            # 2.向客户端发送当前nal
             for ws_client in self.ws_client_list:
                 await ws_client.send(bytes_data=current_nal_data)
 
