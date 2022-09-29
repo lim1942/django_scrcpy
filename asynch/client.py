@@ -1,37 +1,20 @@
 import os
 import struct
 import asyncio
-import subprocess
 from bitstring import BitStream
 
 from h26x_extractor.nalutypes import SPS
-from asynch.asocket import AsyncAdbSocket
 from asynch.controller import Controller
+from asynch.adb import AsyncAdbDevice
 
 
 class DeviceClient:
-    @classmethod
-    def shell(cls, command):
-        """because asyncio.subprocess has bug on windows, so use normal subprocess
-        这里应该使用asyncio.subprocess,因为在windows平台该模块有bug，故使用同步的subprocess
-        """
-        return subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-
-    @classmethod
-    async def cancel_task(cls, task):
-        task.cancel()
-        try:
-            await task
-        except asyncio.CancelledError:
-            print("task is cancelled now")
-        except asyncio.streams.IncompleteReadError:
-            print("socket is close now")
-
     def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
                  crop='', control=True, display_id=0, show_touches=False, stay_awake=True, codec_options="profile=1,level=2",
-                 encoder_name="OMX.google.h264.encoder", send_frame_meta=True, connect_timeout=300):
-        # scrcpy_server启动参数
+                 encoder_name="OMX.google.h264.encoder", send_frame_meta=True, connect_timeout=300, deploy_shell_log=True):
         self.device_id = device_id
+        self.adb_device = AsyncAdbDevice(self.device_id)
+        # scrcpy_server启动参数
         self.max_size = max_size
         self.bit_rate = bit_rate
         self.max_fps = max_fps
@@ -46,11 +29,14 @@ class DeviceClient:
         self.send_frame_meta = send_frame_meta
         # adb socket连接超时时间
         self.connect_timeout = connect_timeout
-        # 连接设备的socket
+        # 是否获取scrcpy server的日志, 部署scrcpy_server的socket和task
+        self.deploy_shell_log = deploy_shell_log
+        self.deploy_shell_socket = None
+        self.deploy_shell_task = None
+        # 连接设备的socket, 监听设备socket的video_task任务
         self.video_socket = None
         self.control_socket = None
-        # 部署进程
-        self.deploy_process = None
+        self.video_task = None
         # 设备型号和分辨率
         self.device_name = None
         self.resolution = None
@@ -60,13 +46,10 @@ class DeviceClient:
         self.controller = Controller(self)
         # 需要推流得ws_client
         self.ws_client_list = list()
-        # 监听设备socket的任务
-        self.video_task = None
 
     def update(self, **kwargs):
         for k, v in kwargs.items():
             setattr(self, k, v)
-        print(f"update {self.device_id} to {kwargs}")
 
     def update_resolution(self, current_nal_data):
         # when read a sps frame, change origin resolution
@@ -79,22 +62,21 @@ class DeviceClient:
                 resolution = (max(self.resolution), min(self.resolution))
             else:
                 resolution = (min(self.resolution), max(self.resolution))
-            print(f'update {self.device_id} resolution {self.resolution} to {resolution}')
             self.resolution = resolution
 
-    def get_command(self, cmd_list):
-        command = ' '.join(cmd_list)
-        if not command.startswith('adb'):
-            command = f'adb -s {self.device_id} {command}'
-        return command
+    async def shell(self, command):
+        if isinstance(command, list):
+            command = ' '.join(command)
+        shell_socket = await self.adb_device.create_shell_socket(command)
+        return shell_socket
 
     async def prepare_server(self):
         # 1.推送jar包
         server_file_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "scrcpy-server-v1.24")
-        commands1 = self.get_command(['push', server_file_path, f"/data/local/tmp/scrcpy-server.jar"])
-        # 2.启动server
-        commands2 = self.get_command([
-            "shell",
+        commands1 = ['adb -s', self.device_id, 'push', server_file_path, f"/data/local/tmp/scrcpy-server.jar"]
+        os.system(' '.join(commands1))
+        # 2.启动一个adb socket去部署scrcpy_server
+        commands2 = [
             "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
             "app_process",
             "/",
@@ -117,46 +99,58 @@ class DeviceClient:
             "clipboard_autosync=false",   # auto sync clipboard
             "raw_video_stream=false",    # video_socket just receive raw_video_stream
             f"send_frame_meta={self.send_frame_meta}",    # receive frame_mete
-        ])
-        self.deploy_process = self.shell(f'{commands1} && {commands2}')
+        ]
+        self.deploy_shell_socket = await self.shell(commands2)
+        if self.deploy_shell_log:
+            self.deploy_shell_task = asyncio.ensure_future(self._srccpy_server_task())
 
     async def prepare_socket(self):
-        self.video_socket = AsyncAdbSocket(self.device_id, 'localabstract:scrcpy', connect_timeout=self.connect_timeout)
-        await self.video_socket.connect()
-        # 1.video_socket连接成功标志
+        # 1.video_socket
+        self.video_socket = await self.adb_device.create_connection_socket('localabstract:scrcpy', timeout=self.connect_timeout)
         dummy_byte = await self.video_socket.read_exactly(1)
         if not len(dummy_byte) or dummy_byte != b"\x00":
             raise ConnectionError("not receive Dummy Byte")
-        # 2.连接control_socket
-        self.control_socket = AsyncAdbSocket(self.device_id, 'localabstract:scrcpy', connect_timeout=self.connect_timeout)
-        await self.control_socket.connect()
-        # 3.获取设备类型
+        # 2.control_socket
+        self.control_socket = await self.adb_device.create_connection_socket('localabstract:scrcpy', timeout=self.connect_timeout)
+        # 3.device information
         self.device_name = (await self.video_socket.read_exactly(64)).decode("utf-8").rstrip("\x00")
         if not len(self.device_name):
             raise ConnectionError("not receive Device Name")
-        # 4.获取分辨率
         self.resolution = struct.unpack(">HH", await self.video_socket.read_exactly(4))
+
+    async def _srccpy_server_task(self):
+        while True:
+            data = await self.deploy_shell_socket.read(-1)
+            if not data:
+                break
+            print(data.decode('utf-8'))
 
     # 滞留一帧，数据推送多一帧延迟，丢包率低
     async def _video_task1(self):
         while True:
-            data = await self.video_socket.read_until(b'\x00\x00\x00\x01')
-            current_nal_data = b'\x00\x00\x00\x01' + data.rstrip(b'\x00\x00\x00\x01')
-            self.update_resolution(current_nal_data)
-            for ws_client in self.ws_client_list:
-                await ws_client.send(bytes_data=current_nal_data)
+            try:
+                data = await self.video_socket.read_until(b'\x00\x00\x00\x01')
+                current_nal_data = b'\x00\x00\x00\x01' + data.rstrip(b'\x00\x00\x00\x01')
+                self.update_resolution(current_nal_data)
+                for ws_client in self.ws_client_list:
+                    await ws_client.send(bytes_data=current_nal_data)
+            except asyncio.streams.IncompleteReadError:
+                break
 
     # 实时推送当前帧，可能丢包
     async def _video_task2(self):
         while True:
-            # 1.读取frame_meta
-            frame_meta = await self.video_socket.read_exactly(12)
-            data_length = struct.unpack('>L', frame_meta[8:])[0]
-            current_nal_data = await self.video_socket.read_exactly(data_length)
-            self.update_resolution(current_nal_data)
-            # 2.向客户端发送当前nal
-            for ws_client in self.ws_client_list:
-                await ws_client.send(bytes_data=current_nal_data)
+            try:
+                # 1.读取frame_meta
+                frame_meta = await self.video_socket.read_exactly(12)
+                data_length = struct.unpack('>L', frame_meta[8:])[0]
+                current_nal_data = await self.video_socket.read_exactly(data_length)
+                self.update_resolution(current_nal_data)
+                # 2.向客户端发送当前nal
+                for ws_client in self.ws_client_list:
+                    await ws_client.send(bytes_data=current_nal_data)
+            except asyncio.streams.IncompleteReadError:
+                break
 
     async def start(self):
         await self.prepare_server()
@@ -170,12 +164,11 @@ class DeviceClient:
         if self.video_socket:
             await self.video_socket.disconnect()
             self.video_socket = None
+            self.video_task = None
         if self.control_socket:
             await self.control_socket.disconnect()
             self.control_socket = None
-        if self.deploy_process:
-            self.shell(self.get_command(["shell", "\"ps -ef | grep scrcpy |awk '{print $2}' |xargs kill -9\""])).wait()
-            self.deploy_process.terminate()
-            self.deploy_process = None
-        if self.video_task:
-            await self.cancel_task(self.video_task)
+        if self.deploy_shell_socket:
+            await self.deploy_shell_socket.disconnect()
+            self.deploy_shell_socket = None
+            self.deploy_shell_task = None

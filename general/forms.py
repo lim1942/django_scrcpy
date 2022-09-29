@@ -24,6 +24,7 @@ class MobileForm(forms.ModelForm):
     encoder_name = forms.ChoiceField(label='编码方式', choices=encoder_name_choice, required=False)
     send_frame_meta = forms.BooleanField(label='帧元数据', required=False, help_text='发送帧元数据时，视频延迟更低')
     connect_timeout = forms.IntegerField(label='超时时间', required=False, help_text='连接scrcpy超时时间，300=3s')
+    deploy_shell_log = forms.BooleanField(label='部署日志', required=False, help_text='是否打开scrcpy的部署日志')
 
     def get_initial_for_field(self, field, field_name):
         """
@@ -60,6 +61,8 @@ class MobileForm(forms.ModelForm):
             return config_dict.get(field_name, True)
         elif field_name == 'connect_timeout':
             return config_dict.get(field_name, 300)
+        elif field_name == 'deploy_shell_log':
+            return config_dict.get(field_name, True)
         else:
             return value
 
