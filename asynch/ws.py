@@ -40,7 +40,6 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         """receive used to control device"""
         obj = ReceiveMsgObj()
         obj.format_text_data(text_data)
-        self.device_client.resolution = obj.resolution or self.device_client.resolution
         # keycode
         if obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_KEYCODE:
             if obj.action is None:

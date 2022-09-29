@@ -58,7 +58,6 @@
           action: action,
           x: pix_data[0],
           y: pix_data[1],
-          resolution: [window.player.canvas.width, window.player.canvas.height]
         }
         ws.send(JSON.stringify(msg))
       }
@@ -71,7 +70,6 @@
           y: pix_data[1],
           distance_x: pix_data[2],
           distance_y: pix_data[3],
-          resolution: [window.player.canvas.width, window.player.canvas.height]
         }
         ws.send(JSON.stringify(msg))
       }
@@ -108,7 +106,6 @@
             end_y: pix_data[3],
             unit: unit,
             delay: delay,
-            resolution: [window.player.canvas.width, window.player.canvas.height],
           }
           ws.send(JSON.stringify(msg))
         }

@@ -55,6 +55,8 @@ class Controller:
         buttons: android_motionevent_buttons
         inject_data: lens 28
         """
+        if action == android_motionevent_action.AMOTION_EVENT_ACTION_UP:
+            pressure = 0x0
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT
         x, y = max(x, 0), max(y, 0)
         inject_data = struct.pack(">BBqiiHHHi", msg_type, action, touch_id, int(x), int(y),
