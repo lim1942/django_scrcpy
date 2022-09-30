@@ -14,19 +14,19 @@
     <button id="set_clipboard_button">set_clipboard</button>
   </div>
   <div>
-    <input id="Checkbox_menu" type="checkbox" value="82"/>
+    <input id="menu_checkbox" type="checkbox" value="82"/>
     <button id="menu_button">menu</button>
-    <input id="Checkbox_home" type="checkbox" value="3"/>
+    <input id="home_checkbox" type="checkbox" value="3"/>
     <button id="home_button">home</button>
-    <input id="Checkbox_back" type="checkbox" value="4"/>
+    <input id="back_checkbox" type="checkbox" value="4"/>
     <button id="back_button">back</button>
   </div>
   <div>
-    <input id="Checkbox_v+" type="checkbox" value="24"/>
+    <input id="v+_checkbox" type="checkbox" value="24"/>
     <button id="v+_button">v+</button>
-    <input id="Checkbox_v-" type="checkbox" value="25"/>
+    <input id="v-_checkbox" type="checkbox" value="25"/>
     <button id="v-_button">v-</button>
-    <input id="Checkbox_power" type="checkbox" value="26"/>
+    <input id="power_checkbox" type="checkbox" value="26"/>
     <button id="power_button">power</button>
   </div>
   <div>
@@ -275,7 +275,7 @@
     key_list = ['menu', 'home', 'back', 'v+', 'v-', 'power']
     checked_key_list = []
     for (var key of key_list){
-      checkbox = document.getElementById('Checkbox_' + key)
+      checkbox = document.getElementById(key+'_checkbox')
       if (checkbox.checked){
          checked_key_list.push(parseInt(checkbox.value))
       }
@@ -292,8 +292,8 @@
   }
 
   // 处理button长按事件
-  function button_mouse_up_down(ele, keycode){
-     button_mouse_up_down_keycode = 'button_mouse_up_down' + keycode
+  function add_button_mouse_event(ele, keycode){
+     button_mouse_up_down_keycode = 'add_button_mouse_event' + keycode
      window.button_mouse_up_down_keycode = null
      // 1.mousedown
      ele.addEventListener('mousedown', function (event) {
@@ -346,12 +346,12 @@
         add_canvas_touch_event(window.player.canvas);
         add_canvas_swipe_event(window.player.canvas);
         add_canvas_scroll_event(window.player.canvas);
-        button_mouse_up_down(document.getElementById('menu_button'), 82);
-        button_mouse_up_down(document.getElementById('home_button'), 3);
-        button_mouse_up_down(document.getElementById('back_button'), 4);
-        button_mouse_up_down(document.getElementById('v+_button'), 24);
-        button_mouse_up_down(document.getElementById('v-_button'), 25);
-        button_mouse_up_down(document.getElementById('power_button'), 26);
+        add_button_mouse_event(document.getElementById('menu_button'), 82);
+        add_button_mouse_event(document.getElementById('home_button'), 3);
+        add_button_mouse_event(document.getElementById('back_button'), 4);
+        add_button_mouse_event(document.getElementById('v+_button'), 24);
+        add_button_mouse_event(document.getElementById('v-_button'), 25);
+        add_button_mouse_event(document.getElementById('power_button'), 26);
         document.getElementById('get_clipboard_button').addEventListener('click', button_handle_get_clipboard)
         document.getElementById('set_clipboard_button').addEventListener('click', button_handle_set_clipboard)
         document.getElementById('multi-key_button').addEventListener('click', button_handle_multi_key)
