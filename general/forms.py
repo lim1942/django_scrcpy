@@ -5,12 +5,20 @@ from general.models import Mobile
 
 
 class MobileForm(forms.ModelForm):
-    encoder_name_choice = (
+    LOG_LEVEL_CHOICE = (
+        ('verbose', 'verbose'),
+        ('debug', 'debug'),
+        ('info', 'info'),
+        ('warn', 'warn'),
+        ('error', 'error'),
+    )
+    ENCODER_NAME_CHOICE = (
         ('OMX.google.h264.encoder', 'OMX.google.h264.encoder'),
         ('OMX.qcom.video.encoder.avc', 'OMX.qcom.video.encoder.avc'),
         ('c2.qti.avc.encoder', 'c2.qti.avc.encoder'),
         ('c2.android.avc.encoder', 'c2.android.avc.encoder'),
     )
+    log_level = forms.ChoiceField(label='日志等级', choices=LOG_LEVEL_CHOICE, required=False, help_text='scrcpy 服务的日志等级')
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)
     bit_rate = forms.IntegerField(label='比特率', help_text='800000, 此时比特率为800kbs', required=False)
     max_fps = forms.IntegerField(label='视频帧率', help_text='25, 此时最大帧率为25', required=False)
@@ -21,8 +29,11 @@ class MobileForm(forms.ModelForm):
     show_touches = forms.BooleanField(label="显示点击", help_text="显示屏幕点击操作", required=False)
     stay_awake = forms.BooleanField(label="保持唤醒", help_text="scrcpy连接时间设备屏幕常亮", required=False)
     codec_options = forms.CharField(label='编码参数', required=False)
-    encoder_name = forms.ChoiceField(label='编码方式', choices=encoder_name_choice, required=False)
-    send_frame_meta = forms.BooleanField(label='帧元数据', required=False, help_text='发送帧元数据时，视频延迟更低')
+    encoder_name = forms.ChoiceField(label='编码方式', choices=ENCODER_NAME_CHOICE, required=False)
+    power_off_on_close = forms.BooleanField(label='结束熄屏', required=False, help_text='scrcpy结束运行，屏幕熄灭')
+    downsize_on_error = forms.BooleanField(label='尺寸适配', required=False, help_text='录屏编码错误，降低录屏尺寸适配')
+    power_on = forms.BooleanField(label='开始亮屏', required=False, help_text='scrcpy开始运行，屏幕亮起')
+    send_frame_meta = forms.BooleanField(label='帧元数据', required=False, help_text='发送帧元数据，视频延迟更低')
     connect_timeout = forms.IntegerField(label='超时时间', required=False, help_text='连接scrcpy超时时间，300=3s')
     deploy_shell_log = forms.BooleanField(label='部署日志', required=False, help_text='是否打开scrcpy的部署日志')
 
@@ -35,10 +46,12 @@ class MobileForm(forms.ModelForm):
         if callable(value):
             value = value()
         config_dict = json.loads(self.instance.config)
+        if field_name == 'log_level':
+            return config_dict.get(field_name, 'verbose')
         if field_name == 'max_size':
             return config_dict.get(field_name, 720)
         elif field_name == 'bit_rate':
-            return config_dict.get(field_name, 8000000)
+            return config_dict.get(field_name, 800000)
         elif field_name == 'max_fps':
             return config_dict.get(field_name, 25)
         elif field_name == 'lock_video_orientation':
@@ -57,6 +70,12 @@ class MobileForm(forms.ModelForm):
             return config_dict.get(field_name, "profile=1,level=2")
         elif field_name == 'encoder_name':
             return config_dict.get(field_name, 'OMX.google.h264.encoder')
+        elif field_name == 'power_off_on_close':
+            return config_dict.get(field_name, False)
+        elif field_name == 'downsize_on_error':
+            return config_dict.get(field_name, True)
+        elif field_name == 'power_on':
+            return config_dict.get(field_name, True)
         elif field_name == 'send_frame_meta':
             return config_dict.get(field_name, True)
         elif field_name == 'connect_timeout':
@@ -69,9 +88,9 @@ class MobileForm(forms.ModelForm):
     def clean(self):
         self._validate_unique = True
         new_config_dict = dict()
-        for field in ('max_size', 'bit_rate', 'max_fps', 'lock_video_orientation', 'crop', 'control', 'display_id',
-                      'show_touches', 'stay_awake', 'codec_options', 'encoder_name', 'send_frame_meta',
-                      'connect_timeout', 'deploy_shell_log'):
+        for field in ('log_level', 'max_size', 'bit_rate', 'max_fps', 'lock_video_orientation', 'crop', 'control',
+                      'display_id', 'show_touches', 'stay_awake', 'codec_options', 'encoder_name', 'power_off_on_close',
+                      'downsize_on_error', 'power_on', 'send_frame_meta', 'connect_timeout', 'deploy_shell_log'):
             new_config_dict[field] = self.cleaned_data[field]
         self.cleaned_data['config'] = json.dumps(new_config_dict)
         return self.cleaned_data

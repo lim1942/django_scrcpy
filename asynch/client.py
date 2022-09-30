@@ -9,12 +9,29 @@ from asynch.adb import AsyncAdbDevice
 
 
 class DeviceClient:
-    def __init__(self, device_id, max_size=720, bit_rate=8000000, max_fps=25, lock_video_orientation=-1,
-                 crop='', control=True, display_id=0, show_touches=False, stay_awake=True, codec_options="profile=1,level=2",
-                 encoder_name="OMX.google.h264.encoder", send_frame_meta=True, connect_timeout=300, deploy_shell_log=True):
+    def __init__(self, device_id,
+                 log_level='verbose',
+                 max_size=720,
+                 bit_rate=800000,
+                 max_fps=25,
+                 lock_video_orientation=-1,
+                 crop='',
+                 control=True,
+                 display_id=0,
+                 show_touches=False,
+                 stay_awake=True,
+                 codec_options="profile=1,level=2",
+                 encoder_name="OMX.google.h264.encoder",
+                 power_off_on_close=False,
+                 downsize_on_error=True,
+                 power_on=True,
+                 send_frame_meta=True,
+                 connect_timeout=300,
+                 deploy_shell_log=True):
         self.device_id = device_id
         self.adb_device = AsyncAdbDevice(self.device_id)
         # scrcpy_server启动参数
+        self.log_level = log_level
         self.max_size = max_size
         self.bit_rate = bit_rate
         self.max_fps = max_fps
@@ -26,6 +43,9 @@ class DeviceClient:
         self.stay_awake = stay_awake
         self.codec_options = codec_options
         self.encoder_name = encoder_name
+        self.power_off_on_close = power_off_on_close
+        self.downsize_on_error = downsize_on_error
+        self.power_on = power_on
         self.send_frame_meta = send_frame_meta
         # adb socket连接超时时间
         self.connect_timeout = connect_timeout
@@ -67,6 +87,7 @@ class DeviceClient:
     async def shell(self, command):
         if isinstance(command, list):
             command = ' '.join(command)
+        command = command.replace('True', 'true').replace('False', 'false')
         shell_socket = await self.adb_device.create_shell_socket(command)
         return shell_socket
 
@@ -81,7 +102,7 @@ class DeviceClient:
             "/",
             "com.genymobile.scrcpy.Server",
             "1.24",  # Scrcpy server version
-            "log_level=info",  # Log level: info, verbose...
+            f"log_level={self.log_level}",  # Log level: info, verbose...
             f"max_size={self.max_size}",  # Max screen width (long side)
             f"bit_rate={self.bit_rate}",  # Bitrate of video
             f"max_fps={self.max_fps}",  # Max frame per second
@@ -94,10 +115,15 @@ class DeviceClient:
             f"stay_awake={self.stay_awake}",  # scrcpy server Stay awake
             f"codec_options={self.codec_options}",  # Codec (video encoding) options
             f"encoder_name={self.encoder_name}",  # Encoder name
-            "power_off_on_close=false",  # Power off screen after server closed
-            "clipboard_autosync=false",   # auto sync clipboard
-            "raw_video_stream=false",    # video_socket just receive raw_video_stream
-            f"send_frame_meta={self.send_frame_meta}",    # receive frame_mete
+            f"power_off_on_close={self.power_off_on_close}",  # Power off screen after server closed
+            "clipboard_autosync=false",  # auto sync clipboard
+            f"downsize_on_error={self.downsize_on_error}",   # when encode screen error downsize and retry encode screen
+            "cleanup=true",     # enable cleanup thread
+            f"power_on={self.power_on}",   # power on when scrcpy deploy
+            "send_device_meta=true",    # send device name, device resolution when video socket connect
+            f"send_frame_meta={self.send_frame_meta}",    # receive frame_mete,
+            "send_dummy_byte=true",     # send dummy byte when video socket connect
+            "raw_video_stream=false",  # video_socket just receive raw_video_stream
         ]
         self.deploy_shell_socket = await self.shell(commands2)
         if self.deploy_shell_log:
