@@ -110,7 +110,8 @@ class DeviceClient:
         if not len(dummy_byte) or dummy_byte != b"\x00":
             raise ConnectionError("not receive Dummy Byte")
         # 2.control_socket
-        self.control_socket = await self.adb_device.create_connection_socket('localabstract:scrcpy', timeout=self.connect_timeout)
+        if self.control:
+            self.control_socket = await self.adb_device.create_connection_socket('localabstract:scrcpy', timeout=self.connect_timeout)
         # 3.device information
         self.device_name = (await self.video_socket.read_exactly(64)).decode("utf-8").rstrip("\x00")
         if not len(self.device_name):
