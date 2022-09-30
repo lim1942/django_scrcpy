@@ -69,11 +69,11 @@ class MobileForm(forms.ModelForm):
     def clean(self):
         self._validate_unique = True
         new_config_dict = dict()
-        for field in ('max_size', 'bit_rate', 'max_fps', 'lock_video_orientation', 'crop', 'stay_awake','codec_options',
-                      'encoder_name', 'send_frame_meta', 'connect_timeout'):
+        for field in ('max_size', 'bit_rate', 'max_fps', 'lock_video_orientation', 'crop', 'control', 'display_id',
+                      'show_touches', 'stay_awake', 'codec_options', 'encoder_name', 'send_frame_meta',
+                      'connect_timeout', 'deploy_shell_log'):
             new_config_dict[field] = self.cleaned_data[field]
         self.cleaned_data['config'] = json.dumps(new_config_dict)
-        print(self.cleaned_data)
         return self.cleaned_data
 
     class Meta:

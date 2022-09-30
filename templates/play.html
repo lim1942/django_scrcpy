@@ -7,31 +7,31 @@
 <div style="display: inline-block; vertical-align:top;">
   <div>
     <input id="get_clipboard" style="height:40px;width:200px;margin-bottom:5px;">
-    <button onclick="get_clipboard()">get_clipboard</button>
+    <button id="get_clipboard_button">get_clipboard</button>
   </div>
   <div>
     <input id="set_clipboard" style="height:40px;width:200px;margin-bottom:5px;" placeholder="please paste here">
-    <button onclick="button_handle_set_clipboard()">set_clipboard</button>
+    <button id="set_clipboard_button">set_clipboard</button>
   </div>
   <div>
     <input id="Checkbox_menu" type="checkbox" value="82"/>
-    <button onclick="inject_keycode(82)">menu</button>
+    <button id="menu_button">menu</button>
     <input id="Checkbox_home" type="checkbox" value="3"/>
-    <button onclick="inject_keycode(3)">home</button>
+    <button id="home_button">home</button>
     <input id="Checkbox_back" type="checkbox" value="4"/>
-    <button onclick="inject_keycode(4)">back</button>
+    <button id="back_button">back</button>
   </div>
   <div>
     <input id="Checkbox_v+" type="checkbox" value="24"/>
-    <button onclick="inject_keycode(24)">v+</button>
+    <button id="v+_button">v+</button>
     <input id="Checkbox_v-" type="checkbox" value="25"/>
-    <button onclick="inject_keycode(25)">v-</button>
+    <button id="v-_button">v-</button>
     <input id="Checkbox_power" type="checkbox" value="26"/>
-    <button id="power">power</button>
+    <button id="power_button">power</button>
   </div>
   <div>
-    <a id="capture"></a><button onclick="button_handle_capture()">capture</button>
-    <button onclick="button_handle_multi_key()">multi-key</button>
+    <a id="capture"></a><button id="capture_button">capture</button>
+    <button id="multi-key_button">multi-key</button>
   </div>
 </div>
 <script type="text/javascript" src="/static/general/js/Decoder.js"></script>
@@ -257,6 +257,11 @@
     }
   }
 
+  // 处理获取剪切板
+  function button_handle_get_clipboard(){
+    get_clipboard(1)
+  }
+
   // 处理截图
   function button_handle_capture(){
       var ele = document.getElementById('capture')
@@ -316,6 +321,8 @@
 <script >
       // 1.记录device_id到window对象
       window.device_id =  "{{device_id}}"
+      window.query_param = window.location.href.split('?')[1]
+      window.query_param_dict = JSON.parse(decodeURIComponent(window.query_param.split('=')[1]))
       // 2.给Date对象增加时间格式化方法
       Date.prototype.formatCode = function (formatStr = "yyyy-MM-DD HH:mm:ss") {
         const paddingZero = num => num >= 10 ? num : '0' + num;
@@ -329,17 +336,28 @@
         str = str.replace(/SS/, paddingZero(this.getMilliseconds()));
         return str;
       };
-      // 3.给power键添加长按事件
-      button_mouse_up_down(document.getElementById('power'), 26)
-      // 4.初始化播放器, 给播放器添加事件监听，播放器增加到dom中
+      // 3.初始化播放器, 给播放器添加事件监听，播放器增加到dom中
       var playerElement = document.getElementById('container')
       window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
       playerElement.appendChild(window.player.canvas);
-      add_canvas_touch_event(window.player.canvas);
-      add_canvas_swipe_event(window.player.canvas);
-      add_canvas_scroll_event(window.player.canvas);
+      // 4.绑定事件监听
+      if (window.query_param_dict['control'] != false){
+        add_canvas_touch_event(window.player.canvas);
+        add_canvas_swipe_event(window.player.canvas);
+        add_canvas_scroll_event(window.player.canvas);
+        button_mouse_up_down(document.getElementById('menu_button'), 82);
+        button_mouse_up_down(document.getElementById('home_button'), 3);
+        button_mouse_up_down(document.getElementById('back_button'), 4);
+        button_mouse_up_down(document.getElementById('v+_button'), 24);
+        button_mouse_up_down(document.getElementById('v-_button'), 25);
+        button_mouse_up_down(document.getElementById('power_button'), 26);
+        document.getElementById('get_clipboard_button').addEventListener('click', button_handle_get_clipboard)
+        document.getElementById('set_clipboard_button').addEventListener('click', button_handle_set_clipboard)
+        document.getElementById('capture_button').addEventListener('click', button_handle_capture)
+        document.getElementById('multi-key_button').addEventListener('click', button_handle_multi_key)
+      }
       // 5.初始化websocket
-      var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.location.href.split('?')[1]
+      var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.query_param
       var ws = new WebSocket(ws_url)
       ws.binaryType = 'arraybuffer'
       ws.onopen = function (e) {
