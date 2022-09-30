@@ -33,6 +33,18 @@ class AsyncAdbSocket:
     async def read_until(self, sep):
         return await self.reader.readuntil(sep)
 
+    async def read_string(self, cnt=-1, encoding='utf-8'):
+        return (await self.reader.read(cnt)).decode(encoding)
+
+    async def read_string_line(self, encoding='utf-8'):
+        return (await self.reader.readline()).decode(encoding)
+
+    async def read_string_exactly(self, cnt, encoding='utf-8'):
+        return (await self.reader.readexactly(cnt)).decode(encoding)
+
+    async def read_string_until(self, sep, encoding='utf-8'):
+        return (await self.reader.readuntil(sep)).decode(encoding)
+
     async def write(self, data):
         self.writer.write(data)
         await self.writer.drain()
@@ -102,9 +114,9 @@ class AsyncAdbDevice:
         if stream:
             return socket
         else:
-            data = await socket.read(-1)
+            data = await socket.read_string(-1)
             await socket.disconnect()
-            return data.decode('utf-8')
+            return data
 
     async def create_sync_socket(self, path, command, timeout=300):
         socket = self.get_adb_socket()
@@ -126,7 +138,7 @@ class AsyncAdbDevice:
     async def stat(self, path):
         socket = await self.create_sync_socket(path, 'STAT')
         try:
-            assert "STAT" == (await socket.read_exactly(4)).decode('utf-8')
+            assert "STAT" == await socket.read_string_exactly(4)
             mode, size, mtime = struct.unpack("<III", await socket.read_exactly(12))
             mtime = datetime.datetime.fromtimestamp(mtime) if mtime else None
             return {'mtime': mtime, 'mode': mode, 'size': size}
@@ -137,15 +149,15 @@ class AsyncAdbDevice:
         socket = await self.create_sync_socket(path, 'LIST')
         try:
             while True:
-                resp = await socket.read_exactly(4)
-                if resp.decode('utf-8') == self._DONE:
+                resp = await socket.read_string_exactly(4)
+                if resp == self._DONE:
                     break
                 meta = await socket.read_exactly(16)
                 mode, size, mtime, namelen = struct.unpack("<IIII", meta)
-                name = (await socket.read_exactly(namelen)).decode('utf-8')
+                name = await socket.read_string_exactly(namelen)
                 try:
                     mtime = datetime.datetime.fromtimestamp(mtime)
-                except OSError: # bug in Python 3.6
+                except OSError:     # bug in Python 3.6
                     mtime = datetime.datetime.now()
                 yield {'name': '/'.join([path, name]), 'mtime': mtime, 'mode': mode, 'size': size}
         finally:
@@ -169,9 +181,9 @@ class AsyncAdbDevice:
                     await socket.write(b"DATA" + struct.pack("<I", len(chunk)))
                     await socket.write(chunk)
                     total_size += len(chunk)
-                status_msg = await socket.read_exactly(4)
+                status_msg = await socket.read_string_exactly(4)
                 await socket.disconnect()
-                if status_msg.decode('utf-8') != self._OKAY:
+                if status_msg != self._OKAY:
                     raise AdbError("上传文件失败")
             if check:
                 file_size = (await self.stat(dst))['size']
@@ -184,10 +196,10 @@ class AsyncAdbDevice:
         socket = await self.create_sync_socket(path, 'RECV')
         try:
             while True:
-                status_msg = (await socket.read_exactly(4)).decode('utf-8')
+                status_msg = await socket.read_string_exactly(4)
                 if status_msg == self._FAIL:
                     error_msg_size = struct.unpack("<I", await socket.read_exactly(4))[0]
-                    error_msg = (await socket.read_exactly(error_msg_size)).decode('utf-8')
+                    error_msg = await socket.read_string_exactly(error_msg_size)
                     raise AdbError(f"iter_content error {error_msg}")
                 elif status_msg == self._DONE:
                     break
@@ -216,6 +228,6 @@ if __name__ == '__main__':
     async def test_iter_content():
         adb_device = AsyncAdbDevice('5b39e4f30207')
         print(await adb_device.get_content( '/sdcard/ccccc'))
-    asyncio.run(test_iter_content())
+    asyncio.run(test_list_directory())
 
 
