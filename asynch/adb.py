@@ -5,6 +5,7 @@ import datetime
 
 from django_scrcpy.settings import ADB_SERVER_ADDR, ADB_SERVER_PORT
 
+
 class AdbError(Exception):
     pass
 
@@ -219,15 +220,20 @@ class AsyncAdbDevice:
 
 
 if __name__ == '__main__':
+    async def test_shell():
+        adb_device = AsyncAdbDevice('ea141ba00521')
+        a = await adb_device.shell('top', stream=True)
+        while True:
+            print(await a.read_string_line())
     async def test_list_directory():
-        adb_device = AsyncAdbDevice('5b39e4f30207')
-        await adb_device.list_directory('/sdcard')
+        adb_device = AsyncAdbDevice('ea141ba00521')
+        print(await adb_device.list_directory('/sdcard'))
     async def test_push_file():
-        adb_device = AsyncAdbDevice('5b39e4f30207')
+        adb_device = AsyncAdbDevice('ea141ba00521')
         await adb_device.push_file('scrcpy-server-v1.24', '/sdcard/ccccc')
-    async def test_iter_content():
-        adb_device = AsyncAdbDevice('5b39e4f30207')
+    async def test_get_content():
+        adb_device = AsyncAdbDevice('ea141ba00521')
         print(await adb_device.get_content( '/sdcard/ccccc'))
-    asyncio.run(test_list_directory())
 
+    asyncio.run(test_get_content())
 

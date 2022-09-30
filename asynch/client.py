@@ -119,10 +119,10 @@ class DeviceClient:
 
     async def _srccpy_server_task(self):
         while True:
-            data = await self.deploy_shell_socket.read(-1)
+            data = await self.deploy_shell_socket.read_string_line()
             if not data:
                 break
-            print(data.decode('utf-8'))
+            print(data.rstrip('\r\n').rstrip('\n'))
 
     # 滞留一帧，数据推送多一帧延迟，丢包率低
     async def _video_task1(self):
