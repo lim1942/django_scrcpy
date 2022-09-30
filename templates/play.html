@@ -341,6 +341,7 @@
       window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
       playerElement.appendChild(window.player.canvas);
       // 4.绑定事件监听
+      document.getElementById('capture_button').addEventListener('click', button_handle_capture)
       if (window.query_param_dict['control'] != false){
         add_canvas_touch_event(window.player.canvas);
         add_canvas_swipe_event(window.player.canvas);
@@ -353,7 +354,6 @@
         button_mouse_up_down(document.getElementById('power_button'), 26);
         document.getElementById('get_clipboard_button').addEventListener('click', button_handle_get_clipboard)
         document.getElementById('set_clipboard_button').addEventListener('click', button_handle_set_clipboard)
-        document.getElementById('capture_button').addEventListener('click', button_handle_capture)
         document.getElementById('multi-key_button').addEventListener('click', button_handle_multi_key)
       }
       // 5.初始化websocket
