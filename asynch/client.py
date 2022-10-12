@@ -127,7 +127,7 @@ class DeviceClient:
         ]
         self.deploy_shell_socket = await self.shell(commands2)
         if self.deploy_shell_log:
-            self.deploy_shell_task = asyncio.ensure_future(self._srccpy_server_task())
+            self.deploy_shell_task = asyncio.create_task(self._srccpy_server_task())
 
     async def prepare_socket(self):
         # 1.video_socket
@@ -182,9 +182,9 @@ class DeviceClient:
         await self.prepare_server()
         await self.prepare_socket()
         if self.send_frame_meta:
-            self.video_task = asyncio.ensure_future(self._video_task2())
+            self.video_task = asyncio.create_task(self._video_task2())
         else:
-            self.video_task = asyncio.ensure_future(self._video_task1())
+            self.video_task = asyncio.create_task(self._video_task1())
 
     async def stop(self):
         if self.video_socket:
