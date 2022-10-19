@@ -19,6 +19,17 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
     list_filter = ['device_type', 'updated_time', 'created_time']
     list_display = ['device_id', 'device_name', 'device_type', 'online', 'screen', 'updated_time', 'created_time']
 
+    def get_queryset(self, request):
+        user = request.user
+        qs = super().get_queryset(request)
+        # 超级用户不筛选
+        if user.is_superuser:
+            return qs
+        # 非超级用户，根据组名筛选对应device_type设备，用户无分组就报错
+        else:
+            user_group_name = user.groups.all()[0].name
+            return qs.filter(device_type=user_group_name)
+
     def get_readonly_fields(self, request, obj=None):
         if obj:
             return ['config', 'device_id', 'updated_time', 'created_time']
