@@ -22,13 +22,11 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
     def get_queryset(self, request):
         user = request.user
         qs = super().get_queryset(request)
-        # 超级用户不筛选
-        if user.is_superuser:
-            return qs
-        # 非超级用户，根据组名筛选对应device_type设备，用户无分组就报错
-        else:
-            user_group_name = user.groups.all()[0].name
-            return qs.filter(device_type=user_group_name)
+        # 非超级用户，根据组名筛选对应device_type设备
+        if not user.is_superuser:
+            user_group_names = [_['name'] for _ in user.groups.values('name')]
+            qs = qs.filter(device_type__in=user_group_names)
+        return qs
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
