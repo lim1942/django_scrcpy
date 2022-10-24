@@ -9,6 +9,21 @@ from asynch.adb import AsyncAdbDevice
 
 
 class DeviceClient:
+    @classmethod
+    async def cancel_task(cls, task):
+        # If task is already finish, this operation will return False, else return True(mean cancel operation success)
+        task.cancel()
+        try:
+            # Wait task done, Exception inside the task will raise here
+            await task
+            # [task cancel operation no effect] 1.task already finished
+        except asyncio.CancelledError:
+            # [task cancel operation success] 2.catch task CancelledError Exception
+            print("task is cancelled now")
+        except Exception as e:
+            # [task cancel operation no effect] 3.task already finished with a normal Exception
+            print(f"task await exception {type(e)}, {e}")
+
     def __init__(self, device_id,
                  log_level='verbose',
                  max_size=720,
@@ -190,6 +205,8 @@ class DeviceClient:
         if self.video_socket:
             await self.video_socket.disconnect()
             self.video_socket = None
+        if self.video_task:
+            await self.cancel_task(self.video_task)
             self.video_task = None
         if self.control_socket:
             await self.control_socket.disconnect()
@@ -197,4 +214,6 @@ class DeviceClient:
         if self.deploy_shell_socket:
             await self.deploy_shell_socket.disconnect()
             self.deploy_shell_socket = None
+        if self.deploy_shell_task:
+            await self.cancel_task(self.deploy_shell_task)
             self.deploy_shell_task = None
