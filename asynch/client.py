@@ -160,7 +160,7 @@ class DeviceClient:
                 self.update_resolution(current_nal_data)
                 for ws_client in self.ws_client_list:
                     await ws_client.send(bytes_data=current_nal_data)
-            except asyncio.streams.IncompleteReadError:
+            except (asyncio.streams.IncompleteReadError, AttributeError):
                 break
 
     # 实时推送当前帧，可能丢包
@@ -175,7 +175,7 @@ class DeviceClient:
                 # 2.向客户端发送当前nal
                 for ws_client in self.ws_client_list:
                     await ws_client.send(bytes_data=current_nal_data)
-            except asyncio.streams.IncompleteReadError:
+            except (asyncio.streams.IncompleteReadError, AttributeError):
                 break
 
     async def start(self):
