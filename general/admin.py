@@ -19,15 +19,6 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
     list_filter = ['device_type', 'updated_time', 'created_time']
     list_display = ['device_id', 'device_name', 'device_type', 'online', 'screen', 'updated_time', 'created_time']
 
-    def get_queryset(self, request):
-        user = request.user
-        qs = super().get_queryset(request)
-        # 非超级用户，根据组名筛选对应device_type设备
-        if not user.is_superuser:
-            user_group_names = [_['name'] for _ in user.groups.values('name')]
-            qs = qs.filter(device_type__in=user_group_names)
-        return qs
-
     def get_readonly_fields(self, request, obj=None):
         if obj:
             return ['config', 'device_id', 'updated_time', 'created_time']
