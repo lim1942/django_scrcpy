@@ -141,8 +141,6 @@ class DeviceClient:
             "raw_video_stream=false",  # video_socket just receive raw_video_stream
         ]
         self.deploy_shell_socket = await self.shell(commands2)
-        if self.deploy_shell_log:
-            self.deploy_shell_task = asyncio.create_task(self._srccpy_server_task())
 
     async def prepare_socket(self):
         # 1.video_socket
@@ -195,6 +193,8 @@ class DeviceClient:
 
     async def start(self):
         await self.prepare_server()
+        if self.deploy_shell_log:
+            self.deploy_shell_task = asyncio.create_task(self._srccpy_server_task())
         await self.prepare_socket()
         if self.send_frame_meta:
             self.video_task = asyncio.create_task(self._video_task2())
