@@ -4,6 +4,7 @@ Android Device remote display and control in web page,
 provide admin site to config display(like frame-rate, screen-size, bit-rate), support multi devices.  
 
 ![image](asset/device.png)
+![image](asset/admin.png)
 
 # 原理(Summary)
 基于 **python3.7**, **django**异步, **scrcpy**。  
