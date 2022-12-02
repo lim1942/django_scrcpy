@@ -1,7 +1,7 @@
 # 简介(What we can do)
 实现安卓设备的web投屏和操控，提供一个配置管理页用于配置各设备的投屏参数(帧率，尺寸等),支持多设备。  
-Android Device remote display and control in web page,   
-provide admin site to config display(like frame-rate, screen-size, bit-rate), support multi devices.  
+Android Device remote display and control in browser page.   
+Provide manage site config display(frame-rate,screen-size,bit-rate), support multi devices.  
 
 ![image](asset/device.png)
 ![image](asset/admin.png)
