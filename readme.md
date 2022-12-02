@@ -23,18 +23,18 @@ we test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 > `adb devices` in command line can list connected device.    
 > _**List of devices attached**_   
 > **_ba406a9e0421    device_**
-### 1. get_project
+- 1.get project  
 `git clone git@github.com:lim1942/django_scrcpy.git`  
 `cd django_scrcpy`
-#### 2. 安装依赖(Install project dependence)  
+- 2.安装依赖(Install project dependence)  
  `pip install -r requirements.txt`
-### 3. 生成sqlite数据库表结构(Generate django database structure)  
+- 3.生成sqlite数据库表结构(Generate django database structure)  
  `python manage.py migrate`
-### 4. 创建一个管理后台用户(Create admin site superuser)  
+- 4.创建一个管理后台用户(Create admin site superuser)  
  `python manage.py createsuperuser`
-### 5. 收集项目静态文件(Collect django static files)  
+- 5.收集项目静态文件(Collect django static files)  
  `python manage.py collectstatic`
-### 6. 运行项目(Deploy django project by daphne)  
- `daphne django_scrcpy.asgi:application -b 0.0.0.0 -p 8000`
-### 7. 浏览器访问管理管登录管理手机(Visit admin site in chrome and login)  
+- 6.运行项目(Deploy django project by daphne)  
+`daphne django_scrcpy.asgi:application -b 0.0.0.0 -p 8000`
+- 7.浏览器访问管理管登录管理手机(Visit admin site in chrome and login)  
  `http://127.0.0.1:8000/admin/`
