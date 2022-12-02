@@ -1,6 +1,8 @@
 # 简介(What we can do)
 实现安卓设备的web投屏和操控，提供一个配置管理页用于配置各设备的投屏参数(帧率，尺寸等),支持多设备。  
-Android Device remote display and control in web page, provide admin site to config display(like frame-rate, screen-size, bit-rate), support multi devices.  
+Android Device remote display and control in web page,   
+provide admin site to config display(like frame-rate, screen-size, bit-rate), support multi devices.  
+
 ![image](asset/device.png)
 
 # 原理(Summary)
@@ -8,10 +10,10 @@ Android Device remote display and control in web page, provide admin site to con
 后端用scrcpy_server.jar获取手机h264流, 传输通过websocket(django高效异步)，前端broardway.js播放h264流并捕获鼠标事件完成操控。
 电脑先配置好adb，手机设备打开usb调试并连接项目所在的电脑主机, 经测试在usb2.0, 720X336分辨率，800k比特率，25帧，本地浏览器延迟大概为60ms左右。  
 Base on **python3.7**, **django**, **scycpy**.  
-Backend use scrcpy_server.jar grab android-device screen-raw-h264 
-data.Transmission based on websocket (Django efficient asynchronous).
-Frontend use broardway.js play screen-raw-h264 data and capture mouse`s event to control.
-Please confirm adb server is started and android-device has connected to adb server,
+Backend use scrcpy_server.jar grab android-device screen-raw-h264 data.  
+Transmission based on websocket (Django efficient asynchronous).  
+Frontend use broardway.js play screen-raw-h264 data and capture mouse`s event to control.  
+Please confirm adb server is started and android-device has connected to adb server,  
 we test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 
 
