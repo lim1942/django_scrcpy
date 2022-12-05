@@ -96,6 +96,7 @@ class Controller:
             await self.empty_control_socket()
             await self.inject_without_lock(inject_data)
             try:
+                # 剪切板为空时，此处为堵塞
                 _meta = await asyncio.wait_for(self.device.control_socket.read_exactly(5), 1)
                 msg_type, msg_lens = struct.unpack('>BI', _meta)
                 return await self.device.control_socket.read_exactly(msg_lens)
