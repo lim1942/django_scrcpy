@@ -95,9 +95,13 @@ class Controller:
         async with self.device.device_lock:
             await self.empty_control_socket()
             await self.inject_without_lock(inject_data)
-            _meta = await self.device.control_socket.read_exactly(5)
-            msg_type, msg_lens = struct.unpack('>BI', _meta)
-            return await self.device.control_socket.read_exactly(msg_lens)
+            try:
+                _meta = await asyncio.wait_for(self.device.control_socket.read_exactly(5), 1)
+                msg_type, msg_lens = struct.unpack('>BI', _meta)
+                return await self.device.control_socket.read_exactly(msg_lens)
+            except Exception as e:
+                print(f'no clipborad ! {e}')
+                return b''
 
     async def set_clipboard(self, text, sequence=1, paste=True):
         """
