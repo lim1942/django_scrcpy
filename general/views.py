@@ -31,7 +31,6 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
     @action(methods=['get'], detail=True, url_path='filemanager')
     def filemanager(self, request, *args, **kwargs):
         kwargs['title'] = self.get_object().device_name or kwargs['device_id']
-        print(kwargs)
         return render(request, "general/filemanager.html", kwargs)
 
     @action(methods=['post'], detail=True, url_path='filemanager/list')
