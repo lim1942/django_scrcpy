@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en" data-ng-app="FileManagerApp">
+<head>
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <meta charset="utf-8">
+  <title>{{title}}-files</title>
+  <!-- third party -->
+  <script src="/static/filemanager/node_modules/angular/angular.min.js"></script>
+  <script src="/static/filemanager/node_modules/angular-translate/angular-translate.min.js"></script>
+  <script src="/static/filemanager/node_modules/ng-file-upload/ng-file-upload.min.js"></script>
+  <script src="/static/filemanager/node_modules/jquery/dist/jquery.min.js"></script>
+  <script src="/static/filemanager/node_modules/bootstrap/dist/js/bootstrap.min.js"></script>
+  <link rel="stylesheet" href="/static/filemanager/node_modules/bootswatch/paper/bootstrap.min.css" />
+  <!--  angular-filemanager-->
+  <link rel="stylesheet" href="/static/filemanager/dist/angular-filemanager.min.css">
+  <script src="/static/filemanager/dist/angular-filemanager.min.js"></script>
+ <!--  angular-filemanager config-->
+
+<!--  api文档 https://github.com/joni2back/angular-filemanager/blob/master/API.md-->
+  <script type="text/javascript">
+     //example to override angular-filemanager default config
+      var module = angular.module('FileManagerApp');
+      module.run( function run( $http ){
+    // For CSRF token compatibility with Django
+    $http.defaults.headers.post['X-CSRFToken'] = "{{ csrf_token }}";
+
+    })
+    module.config(['fileManagerConfigProvider', function (config) {
+    var defaults = config.$get();
+    config.set({
+              appName: 'angular-filemanager-custom-urls',
+              listUrl: 'list/',
+              uploadUrl: 'upload/',
+              renameUrl: 'rename/',
+              copyUrl: 'copy/',
+              moveUrl: 'move/',
+              removeUrl: 'remove/',
+              editUrl: 'edit/',
+              getContentUrl: 'getContent/',
+              createFolderUrl: 'createFolder/',
+              downloadFileUrl: 'download/',
+              downloadMultipleUrl: 'downloadMultiple/',
+              compressUrl: 'compress/',
+              extractUrl: 'extract/',
+              permissionsUrl: 'changePermissions/',
+              basePath: '/sdcard/',
+              searchForm: true,
+              sidebar: true,
+              breadcrumb: true,
+              allowedActions: {
+                  upload: true,
+                  rename: true,
+                  move: true,
+                  copy: true,
+                  edit: true,
+                  changePermissions: true,
+                  compress: true,
+                  compressChooseName: true,
+                  extract: true,
+                  download: true,
+                  downloadMultiple: true,
+                  preview: true,
+                  remove: true,
+                  createFolder: true,
+                  pickFiles: false,
+                  pickFolders: false
+              },
+    });
+  }])
+  </script>
+</head>
+<body>
+  <angular-filemanager> </angular-filemanager>
+</body>
+</html>

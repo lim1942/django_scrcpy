@@ -1,4 +1,3 @@
-import subprocess
 from urllib.parse import quote
 from django.urls import reverse
 from django.contrib import admin
@@ -7,6 +6,7 @@ from import_export.admin import ExportActionMixin
 
 from general import forms
 from general import models
+from general import adb
 
 
 @admin.register(models.Mobile)
@@ -17,7 +17,7 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
     show_full_result_count = True
     search_fields = ['name']
     list_filter = ['device_type', 'updated_time', 'created_time']
-    list_display = ['device_id', 'device_name', 'device_type', 'online', 'screen', 'updated_time', 'created_time']
+    list_display = ['device_id', 'device_name', 'device_type', 'online', 'screen', 'filemanager', 'updated_time', 'created_time']
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -41,16 +41,13 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
         return mark_safe(f'<a href="{mobile_screen_url}{query_params}" target="_blank">访问</a>')
     screen.short_description = '访问屏幕'
 
+    def filemanager(self, obj):
+        mobile_screen_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
+        return mark_safe(f'<a href="{mobile_screen_url}" target="_blank">访问</a>')
+    filemanager.short_description = '文件管理'
+
     def changelist_view(self, request, extra_context=None):
-        proc = subprocess.Popen('adb devices', stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
-        stdout, stderr = proc.communicate()
-        self.devices_dict = {}
-        for line in stdout.decode().replace('\r', '')[1:].split('\n'):
-            if '\t' in line:
-                device_id, status = line.split('\t')
-                status = (status == 'device')
-                device_id = device_id.replace('.', ',').replace(':', '_')
-                self.devices_dict[device_id] = status
+        self.devices_dict = adb.AdbDevice.list(slug=True)
         models.Mobile.objects.bulk_create([models.Mobile(device_id=k) for k, v in self.devices_dict.items()], ignore_conflicts=True)
         return super().changelist_view(request, extra_context)
 
