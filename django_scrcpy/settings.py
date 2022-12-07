@@ -144,7 +144,10 @@ SIMPLEUI_HOME_INFO = True
 # drf配置
 REST_FRAMEWORK = {
     # 认证
-    'DEFAULT_AUTHENTICATION_CLASSES': [],
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework.authentication.SessionAuthentication',
+        'rest_framework.authentication.BasicAuthentication'
+    ],
     # 版本控制
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
     'DEFAULT_VERSION': 'v1',
@@ -155,7 +158,6 @@ REST_FRAMEWORK = {
     # # 文档
     # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
 }
-
 
 # adb
 ADB_SERVER_ADDR = '127.0.0.1'

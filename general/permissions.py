@@ -1,11 +1,11 @@
 from rest_framework.permissions import BasePermission
 
 
-class TaskPermission(BasePermission):
+class GeneralPermission(BasePermission):
     def has_permission(self, request, view):
-        return True
+        return bool(request.user and request.user.is_authenticated)
 
-    def has_object_permission(self, request, view, obj):
-        if request.method == 'GET':
-            return True
-        return False
+    # def has_object_permission(self, request, view, obj):
+    #     if request.method == 'GET':
+    #         return True
+    #     return False

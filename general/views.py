@@ -17,7 +17,7 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
     lookup_field = 'device_id'
     queryset = models.Mobile.objects.all()
     serializer_class = serializers.MobileModelSerializer
-    permission_classes = (permissions.TaskPermission,)
+    permission_classes = (permissions.GeneralPermission,)
     pagination_class = pagination.SizePageNumberPagination
     filter_backends = (OrderingFilter, SearchFilter)
     search_fields = ('name',)
