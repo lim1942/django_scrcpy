@@ -11,7 +11,6 @@ from general import adb
 
 @admin.register(models.Mobile)
 class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
-
     list_per_page = 20
     form = forms.MobileForm
     show_full_result_count = True
@@ -44,8 +43,8 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
 
     def filemanager(self, obj):
         if self.devices_dict.get(obj.device_id, {}).get('online'):
-            mobile_screen_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
-            return mark_safe(f'<a href="{mobile_screen_url}" target="_blank">访问</a>')
+            mobile_filemanager_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
+            return mark_safe(f'<a href="{mobile_filemanager_url}" target="_blank">访问</a>')
     filemanager.short_description = '文件管理'
 
     def changelist_view(self, request, extra_context=None):

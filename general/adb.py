@@ -40,9 +40,16 @@ class AdbDevice:
         for f_info in self.device.sync.list(path):
             if not contain_dot and f_info.path in ['.', '..']:
                 continue
-            item = {'name': f_info.path, 'rights': stat.filemode(f_info.mode), 'size': str(f_info.size),
+            rights = stat.filemode(f_info.mode)
+            if rights[0] == '-':
+                typ = 'file'
+            elif rights[0] == 'd':
+                typ = 'dir'
+            elif rights[0] == 'l':
+                typ = 'link'
+            item = {'name': f_info.path, 'rights': rights, 'size': str(f_info.size),
                     'date': f_info.mtime.strftime("%Y-%m-%d %H:%M:%S"),
-                    'type': 'dir' if stat.filemode(f_info.mode)[0] == 'd' else 'file'}
+                    'type': typ}
             items.append(item)
         return items
 
