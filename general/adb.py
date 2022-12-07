@@ -12,11 +12,15 @@ class AdbDevice:
     @classmethod
     def list(cls, slug=False):
         devices = {}
-        for info in cls.adb.list():
-            if slug:
-                devices[info.serial.replace(':', '_').replace('.', ',')] = info.state == 'device'
-            else:
-                devices[info.serial] = info.state == 'device'
+        for item in cls.adb.list():
+            adb_item = adbutils.adb.device(serial=item.serial)
+            info = dict()
+            device_id = item.serial.replace(':', '_').replace('.', ',') if slug else item.serial
+            info['device_id'] = device_id
+            info['status'] = item.state
+            info['online'] = item.state == 'device'
+            info['marketname'] = adb_item.shell(["getprop", "ro.product.marketname"])
+            devices[device_id] = info
         return devices
 
     def __init__(self, device_id, path_sep='/'):
@@ -153,4 +157,5 @@ if __name__ == "__main__":
     # print(obj.filemanager_rename('/sdcard/Download/Pod.pm', '/Pod.pm'))
     # print(obj.filemanager_iter_content('/sdcard/Download/Pod.pm').name)
     # obj.filemanager_upload('/sdcard', {'f1':open('views.py','rb')})
-    print(obj.filemanager_walker('/sdcard/Download/1111'))
+    # print(obj.filemanager_walker('/sdcard/Download/1111'))
+    print(AdbDevice.list())
