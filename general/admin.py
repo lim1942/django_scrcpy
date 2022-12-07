@@ -29,28 +29,29 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
         return False
 
     def online(self, obj):
-        if self.devices_dict.get(obj.device_id):
+        if self.devices_dict.get(obj.device_id, {}).get('online'):
             return '🟢'
         else:
             return '🔴'
     online.short_description = '在线状态'
 
     def screen(self, obj):
-        if self.devices_dict.get(obj.device_id):
+        if self.devices_dict.get(obj.device_id, {}).get('online'):
             query_params = f"?config={quote(obj.config)}"
             mobile_screen_url = reverse("mobile-screen", kwargs={"device_id": obj.device_id, "version": "v1"})
             return mark_safe(f'<a href="{mobile_screen_url}{query_params}" target="_blank">访问</a>')
     screen.short_description = '访问屏幕'
 
     def filemanager(self, obj):
-        if self.devices_dict.get(obj.device_id):
+        if self.devices_dict.get(obj.device_id, {}).get('online'):
             mobile_screen_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
             return mark_safe(f'<a href="{mobile_screen_url}" target="_blank">访问</a>')
     filemanager.short_description = '文件管理'
 
     def changelist_view(self, request, extra_context=None):
         self.devices_dict = adb.AdbDevice.list(slug=True)
-        models.Mobile.objects.bulk_create([models.Mobile(device_id=k) for k, v in self.devices_dict.items()], ignore_conflicts=True)
+        models.Mobile.objects.bulk_create([models.Mobile(device_id=v['device_id'], device_type=v['marketname'])
+                                           for v in self.devices_dict.values()], ignore_conflicts=True)
         return super().changelist_view(request, extra_context)
 
     def save_model(self, request, obj, form, change):
