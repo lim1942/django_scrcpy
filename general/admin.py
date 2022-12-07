@@ -36,14 +36,16 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
     online.short_description = '在线状态'
 
     def screen(self, obj):
-        query_params = f"?config={quote(obj.config)}"
-        mobile_screen_url = reverse("mobile-screen", kwargs={"device_id": obj.device_id, "version": "v1"})
-        return mark_safe(f'<a href="{mobile_screen_url}{query_params}" target="_blank">访问</a>')
+        if self.devices_dict.get(obj.device_id):
+            query_params = f"?config={quote(obj.config)}"
+            mobile_screen_url = reverse("mobile-screen", kwargs={"device_id": obj.device_id, "version": "v1"})
+            return mark_safe(f'<a href="{mobile_screen_url}{query_params}" target="_blank">访问</a>')
     screen.short_description = '访问屏幕'
 
     def filemanager(self, obj):
-        mobile_screen_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
-        return mark_safe(f'<a href="{mobile_screen_url}" target="_blank">访问</a>')
+        if self.devices_dict.get(obj.device_id):
+            mobile_screen_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
+            return mark_safe(f'<a href="{mobile_screen_url}" target="_blank">访问</a>')
     filemanager.short_description = '文件管理'
 
     def changelist_view(self, request, extra_context=None):
