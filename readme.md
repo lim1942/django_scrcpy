@@ -4,7 +4,6 @@ Android Device remote display and control in browser page.
 Provide manage site to configure display(frame-rate,screen-size,bit-rate), support multi devices.  
 - web scrcpy
 - file manage
-- adb shell
 
 ![image](asset/device.png)
 ![image](asset/admin.png)
