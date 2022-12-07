@@ -11,13 +11,12 @@ from general import adb
 
 @admin.register(models.Mobile)
 class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
-
     list_per_page = 20
     form = forms.MobileForm
     show_full_result_count = True
     search_fields = ['name']
     list_filter = ['device_type', 'updated_time', 'created_time']
-    list_display = ['device_id', 'device_name', 'device_type', 'online', 'screen', 'filemanager', 'updated_time', 'created_time']
+    list_display = ['device_id', 'device_name', 'device_type', 'online', 'screen', 'filemanager', 'shell', 'updated_time', 'created_time']
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -44,9 +43,15 @@ class TaskAdmin(ExportActionMixin, admin.ModelAdmin):
 
     def filemanager(self, obj):
         if self.devices_dict.get(obj.device_id, {}).get('online'):
-            mobile_screen_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
-            return mark_safe(f'<a href="{mobile_screen_url}" target="_blank">访问</a>')
+            mobile_filemanager_url = reverse("mobile-filemanager", kwargs={"device_id": obj.device_id, "version": "v1"})
+            return mark_safe(f'<a href="{mobile_filemanager_url}" target="_blank">访问</a>')
     filemanager.short_description = '文件管理'
+
+    def shell(self, obj):
+        if self.devices_dict.get(obj.device_id, {}).get('online'):
+            mobile_shell_url = reverse("mobile-shell", kwargs={"device_id": obj.device_id, "version": "v1"})
+            return mark_safe(f'<a href="{mobile_shell_url}" target="_blank">访问</a>')
+    shell.short_description = 'shell'
 
     def changelist_view(self, request, extra_context=None):
         self.devices_dict = adb.AdbDevice.list(slug=True)

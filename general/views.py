@@ -33,6 +33,11 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
         kwargs['title'] = self.get_object().device_name or kwargs['device_id']
         return render(request, "general/filemanager.html", kwargs)
 
+    @action(methods=['get'], detail=True, url_path='shell')
+    def shell(self, request, *args, **kwargs):
+        kwargs['title'] = self.get_object().device_name or kwargs['device_id']
+        return render(request, "general/shell.html", kwargs)
+
     @action(methods=['post'], detail=True, url_path='filemanager/list')
     def filemanager_list(self, request, *args, **kwargs):
         adb_device = adb.AdbDevice(kwargs['device_id'])
