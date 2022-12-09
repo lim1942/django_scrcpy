@@ -1,19 +1,19 @@
 # 简介(What we can do)
+![](https://img.shields.io/badge/windows-grey)
+![](https://img.shields.io/badge/linux-grey)
+![](https://img.shields.io/badge/python-3.7-green)  
 实现安卓设备的web投屏和操控，提供一个配置管理页用于配置各设备的投屏参数(帧率，尺寸等),支持多设备。  
 Android Device remote display and control in browser page.   
 Provide manage site to configure display(frame-rate,screen-size,bit-rate), support multi devices.  
 - web scrcpy
 - file manage
-- adb shell
 
 ![image](asset/device.png)
 ![image](asset/admin.png)
 
-# 原理(Summary)
-基于 **python3.7**, **django**异步, **scrcpy**。  
+# 原理(Summary) 
 后端用scrcpy_server.jar获取手机h264流, 传输通过websocket(django高效异步)，前端broardway.js播放h264流并捕获鼠标事件完成操控。
-电脑先配置好adb，手机设备打开usb调试并连接项目所在的电脑主机, 经测试在usb2.0, 720X336分辨率，800k比特率，25帧，本地浏览器延迟大概为60ms左右。  
-Base on **python3.7**, **django**, **scycpy**.  
+电脑先配置好adb，手机设备打开usb调试并连接项目所在的电脑主机, 经测试在usb2.0, 720X336分辨率，800k比特率，25帧，本地浏览器延迟大概为60ms左右。   
 Backend scrcpy_server.jar grab android-device screen-raw-h264 data.  
 Transmission based on websocket (Django efficiently asynchronous coroutine).  
 Frontend broardway.js play screen-raw-h264 data, capture mouse`s event to control.
