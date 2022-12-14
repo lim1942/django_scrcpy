@@ -53,7 +53,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TEXT:
             await self.device_client.controller.inject_text(obj.text)
         # touch
-        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT:
+        elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT:zzzz
             await self.device_client.controller.inject_touch_event(x=obj.x, y=obj.y, action=obj.action)
         # scroll
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT:
