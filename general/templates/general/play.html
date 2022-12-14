@@ -155,7 +155,7 @@
           // 在window对象记录touch开始
           window.touch_start = null
           // 节流的mouse_move
-          efficient_canvas_mouse_move = throttle(canvas_mouse_move, 30);
+          efficient_canvas_mouse_move = throttle(canvas_mouse_move, 15);
           // 1.mousedown
          ele.addEventListener('mousedown', function (event) {
             if(event.buttons == 1){
