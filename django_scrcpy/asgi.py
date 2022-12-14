@@ -7,7 +7,6 @@ For more information on this file, see
 https://docs.djangoproject.com/en/3.2/howto/deployment/asgi/
 """
 import os
-import sys
 from concurrent.futures import ThreadPoolExecutor
 
 from channels.routing import ProtocolTypeRouter, URLRouter
@@ -25,5 +24,3 @@ application = ProtocolTypeRouter({
     'websocket': URLRouter(routing.websocket_urlpatterns,),
     "http": django_asgi_app,
 })
-
-print(f"\033[32mPlease visit and login in chrome browser:\033[0m http://localhost:{sys.argv[-1]}/admin")
