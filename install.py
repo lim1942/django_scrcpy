@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 import os
-
+os.system('pip install -r requirements.txt')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_scrcpy.settings')
 try:
     from django.core.management import execute_from_command_line
@@ -11,7 +11,6 @@ except ImportError as exc:
         "available on your PYTHONPATH environment variable? Did you "
         "forget to activate a virtual environment?"
     ) from exc
-os.system('pip install -r requirements.txt')
 execute_from_command_line(['manage.py', 'migrate'])
 if not os.path.exists('staticfiles'):
     execute_from_command_line(['manage.py', 'collectstatic'])
