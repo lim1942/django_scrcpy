@@ -25,7 +25,8 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 > `adb devices` in command line can list connected device.    
 > _**List of devices attached**_   
 > **_ba406a9e0421    device_**
-- Install（Maybe you need create a virtualenv first）  
- `python install.py`
+- Install    
+ `pip install -r requirements.txt`  
+ `python init.py`
 - Run（Visit http://127.0.0.1:8000/admin）  
 `daphne django_scrcpy.asgi:application -b 0.0.0.0 -p 8000`

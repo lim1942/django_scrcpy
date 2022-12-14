@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 """Django's command-line utility for administrative tasks."""
 import os
-os.system('pip install -r requirements.txt')
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_scrcpy.settings')
 try:
     from django.core.management import execute_from_command_line
