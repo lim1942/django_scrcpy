@@ -1,3 +1,5 @@
+import pytz
+import datetime
 import os.path
 from django.shortcuts import render
 from django.http import StreamingHttpResponse
@@ -11,6 +13,7 @@ from general import pagination
 from general import serializers
 from general import permissions
 from general import adb
+from django_scrcpy.settings import TIME_ZONE
 
 
 class MobileModelViewSet(ReadOnlyModelViewSet):
@@ -22,6 +25,7 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
     filter_backends = (OrderingFilter, SearchFilter)
     search_fields = ('name',)
     ordering_fields = ('updated_time', 'created_time')
+    filemanage_add_timedelta = datetime.datetime.now().astimezone(tz=pytz.timezone(TIME_ZONE)).utcoffset()
 
     @action(methods=['get'], detail=True, url_path='screen')
     def screen(self, request, *args, **kwargs):
@@ -36,7 +40,10 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
     @action(methods=['post'], detail=True, url_path='filemanager/list')
     def filemanager_list(self, request, *args, **kwargs):
         adb_device = adb.AdbDevice(kwargs['device_id'])
-        return Response({'result': adb_device.filemanager_list(request.data['path'])})
+        items = adb_device.filemanager_list(request.data['path'])
+        for item in items:
+            item['date'] = (item['date'] + self.filemanage_add_timedelta).strftime("%Y-%m-%d %H:%M:%S"),
+        return Response({'result': items})
 
     @action(methods=['post'], detail=True, url_path='filemanager/upload')
     def filemanager_upload(self, request, *args, **kwargs):

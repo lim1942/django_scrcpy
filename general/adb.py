@@ -48,7 +48,7 @@ class AdbDevice:
             elif rights[0] == 'l':
                 typ = 'link'
             item = {'name': f_info.path, 'rights': rights, 'size': str(f_info.size),
-                    'date': f_info.mtime.strftime("%Y-%m-%d %H:%M:%S"),
+                    'date': f_info.mtime,
                     'type': typ}
             items.append(item)
         return items
@@ -165,4 +165,4 @@ if __name__ == "__main__":
     # print(obj.filemanager_iter_content('/sdcard/Download/Pod.pm').name)
     # obj.filemanager_upload('/sdcard', {'f1':open('views.py','rb')})
     # print(obj.filemanager_walker('/sdcard/Download/1111'))
-    print(AdbDevice.list())
+    print(obj.filemanager_list('/sdcard/Download'))
