@@ -19,7 +19,10 @@ class AdbDevice:
             info['device_id'] = device_id
             info['status'] = item.state
             info['online'] = item.state == 'device'
-            info['marketname'] = adb_item.shell(["getprop", "ro.product.marketname"])
+            try:
+                info['marketname'] = adb_item.shell(["getprop", "ro.product.marketname"])
+            except:
+                info['marketname'] = ''
             devices[device_id] = info
         return devices
 
