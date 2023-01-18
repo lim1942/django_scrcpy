@@ -178,10 +178,15 @@ class DeviceClient:
 
     # 实时推送当前帧，可能丢包
     async def _video_task2(self):
+        frame_cnt = 0
         while True:
             try:
                 # 1.读取frame_meta
                 frame_meta = await self.video_socket.read_exactly(12)
+                # 用>大端解析pts(当前帧距离第一帧的微秒数)
+                # frame_cnt += 1
+                # pts = struct.unpack('>Q', frame_meta[:8])[0]
+                # print(pts, pts/1000000, frame_cnt)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.video_socket.read_exactly(data_length)
                 self.update_resolution(current_nal_data)
