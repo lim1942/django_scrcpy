@@ -22,13 +22,13 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.query_params = parse.parse_qs(self.scope['query_string'].decode())
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
         # 2.获取当前ws_client对应的device_client
-        config_dict = json.loads(self.query_params['config'][0])
+        scrcpy_kwargs = json.loads(self.query_params['config'][0])
         old_device_client = self.DEVICE_CLIENT_DICT.get(self.device_id, None)
         if old_device_client:
             self.device_client = old_device_client
-            self.device_client.update(**config_dict)
+            self.device_client.scrcpy_kwargs = scrcpy_kwargs
         else:
-            self.device_client = self.DEVICE_CLIENT_DICT[self.device_id] = DeviceClient(self.device_id, **config_dict)
+            self.device_client = self.DEVICE_CLIENT_DICT[self.device_id] = DeviceClient(self.device_id, scrcpy_kwargs)
         # 3.记录当前client到CLIENT_DICT
         self.device_client.ws_client_list.append(self)
         # 4.重新开始连接device,重新开始任务
@@ -38,8 +38,6 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
-        if not self.device_client.control:
-            return
         obj = ReceiveMsgObj()
         obj.format_text_data(text_data)
         # keycode
