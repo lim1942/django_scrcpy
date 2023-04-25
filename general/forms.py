@@ -77,8 +77,12 @@ class MobileForm(forms.ModelForm):
         # adapt codec name
         if ('hevc' in config_dict['video_encoder']) or ('HEVC' in config_dict['video_encoder']):
             config_dict['video_codec'] = 'h265'
+        else:
+            config_dict['video_codec'] = 'h264'
         if 'aac' in config_dict['audio_encoder']:
             config_dict['audio_codec'] = 'aac'
+        else:
+            config_dict['audio_codec'] = 'opus'
         self.cleaned_data['config'] = json.dumps(config_dict)
         return self.cleaned_data
 
