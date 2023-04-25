@@ -38,6 +38,8 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
+        if not self.device_client.scrcpy_kwargs['control']:
+            return
         obj = ReceiveMsgObj()
         obj.format_text_data(text_data)
         # keycode

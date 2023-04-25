@@ -13,15 +13,23 @@ class MobileForm(forms.ModelForm):
         ('error', 'error'),
     )
     VIDEO_ENCODER_CHOICE = (
+        # 264
         ('OMX.google.h264.encoder', 'OMX.google.h264.encoder'),
         ('OMX.qcom.video.encoder.avc', 'OMX.qcom.video.encoder.avc'),
         ('c2.android.avc.encoder', 'c2.android.avc.encoder'),
+        ('c2.mtk.avc.encoder', 'c2.mtk.avc.encoder'),
+        ('OMX.MTK.VIDEO.ENCODER.AVC', 'OMX.MTK.VIDEO.ENCODER.AVC'),
+        # 265
         ('OMX.qcom.video.encoder.hevc', 'OMX.qcom.video.encoder.hevc'),
         ('OMX.qcom.video.encoder.hevc.cq', 'OMX.qcom.video.encoder.hevc.cq'),
         ('c2.android.hevc.encoder', 'c2.android.hevc.encoder'),
+        ('c2.mtk.hevc.encoder', 'c2.mtk.hevc.encoder'),
+        ('OMX.MTK.VIDEO.ENCODER.HEVC', 'OMX.MTK.VIDEO.ENCODER.HEVC')
     )
     AUDIO_ENCODER_CHOICE = (
+        # opus
         ('c2.android.opus.encoder', 'c2.android.opus.encoder'),
+        # acc
         ('c2.android.aac.encoder', 'c2.android.aac.encoder'),
         ('OMX.google.aac.encoder', 'OMX.google.aac.encoder'),
     )
@@ -62,10 +70,15 @@ class MobileForm(forms.ModelForm):
 
     def clean(self):
         self._validate_unique = True
-        config_dict = json.loads(self.cleaned_data['config'])
+        config_dict = json.loads(self.instance.config)
         for field in self.cleaned_data:
             if field in config_dict:
                 config_dict[field] = self.cleaned_data[field]
+        # adapt codec name
+        if ('hevc' in config_dict['video_encoder']) or ('HEVC' in config_dict['video_encoder']):
+            config_dict['video_codec'] = 'h265'
+        if 'aac' in config_dict['audio_encoder']:
+            config_dict['audio_codec'] = 'aac'
         self.cleaned_data['config'] = json.dumps(config_dict)
         return self.cleaned_data
 

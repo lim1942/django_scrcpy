@@ -3,7 +3,7 @@ from django.db import models
 
 
 DEFAULT_SCRCPY_KWARGS = {
-                "scid": -1,
+                # "scid": -1,
                 "log_level": "verbose",
                 "audio": True,
                 "video_codec": "h264",
@@ -19,7 +19,7 @@ DEFAULT_SCRCPY_KWARGS = {
                 # "display_id": 0,
                 "show_touches": False,
                 "stay_awake": True,
-                "video_codec_options": "profile:1,level:2",
+                "video_codec_options": "profile=1,level=2",
                 "audio_codec_options": "",
                 "video_encoder": "OMX.google.h264.encoder",
                 "audio_encoder": "c2.android.opus.encoder",
@@ -28,8 +28,8 @@ DEFAULT_SCRCPY_KWARGS = {
                 "downsize_on_error": True,
                 "cleanup": True,
                 "power_on": True,
-                "list_encoders": True,
-                "list_displays": True,
+                "list_encoders": False,
+                "list_displays": False,
                 "send_device_meta": True,
                 "send_frame_meta": True,
                 "send_dummy_byte": True,

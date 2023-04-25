@@ -73,8 +73,8 @@ class Controller:
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT
         x, y = max(x, 0), max(y, 0)
-        inject_data = struct.pack(">BiiHHiii", msg_type, int(x), int(y), int(self.device.resolution[0]),
-                                  int(self.device.resolution[1]), int(distance_x), int(distance_y), buttons)
+        inject_data = struct.pack(">BiiHHhhi", msg_type, int(x), int(y), int(self.device.resolution[0]),
+                                  int(self.device.resolution[1]), int(distance_x)*6000, int(distance_y)*6000, buttons)
         await self.inject(inject_data)
         return inject_data
 
