@@ -1,41 +1,72 @@
 import json
 from django.db import models
 
-
 DEFAULT_SCRCPY_KWARGS = {
-                # "scid": -1,
-                "log_level": "verbose",
-                "audio": True,
-                "video_codec": "h264",
-                "audio_codec": "opus",
-                "max_size": 720,
-                "video_bit_rate": 8000000,
-                "audio_bit_rate": 128000,
-                "max_fps": 25,
-                "lock_video_orientation": -1,
-                "tunnel_forward": True,
-                "crop": "",
-                "control": True,
-                # "display_id": 0,
-                "show_touches": False,
-                "stay_awake": True,
-                "video_codec_options": "profile=1,level=2",
-                "audio_codec_options": "",
-                "video_encoder": "OMX.google.h264.encoder",
-                "audio_encoder": "c2.android.opus.encoder",
-                "power_off_on_close": False,
-                "clipboard_autosync": True,
-                "downsize_on_error": True,
-                "cleanup": True,
-                "power_on": True,
-                "list_encoders": False,
-                "list_displays": False,
-                "send_device_meta": True,
-                "send_frame_meta": True,
-                "send_dummy_byte": True,
-                "send_codec_meta": True,
-                "raw_video_stream": False
-            }
+    # 1 scrcpy adb-socket-id, 用于手机区分多个启动的scrcpy。每次运行自动生成
+    # "scid": -1,
+    # 2. scrcpy日志等级
+    "log_level": "verbose",
+    # 3 是否开启声音
+    "audio": True,
+    # 4 音频编码类型
+    "video_codec": "h264",
+    # 5 音频编码类型
+    "audio_codec": "opus",
+    # 6 画面最大尺寸
+    "max_size": 720,
+    # 7 视频比特率
+    "video_bit_rate": 8000000,
+    # 8 音频比特率
+    "audio_bit_rate": 128000,
+    # 9 视频帧率
+    "max_fps": 25,
+    # 10 -1是不锁定屏幕旋转
+    "lock_video_orientation": -1,
+    # 11 通过tunnel_forward方式创建adb-socket
+    "tunnel_forward": True,
+    # 12 画面裁剪
+    "crop": "",
+    # 13 开启控制
+    "control": True,
+    # 14 录制画面id，默认是0
+    # "display_id": 0,
+    # 15 显示屏幕点击
+    "show_touches": False,
+    # 16 保持设备唤醒
+    "stay_awake": True,
+    # 17 视频编码参数，次参数为视频OMX.google.h264.encoder在有些机型报错
+    "video_codec_options": "profile=1,level=2",
+    # 18 音频编码参数
+    "audio_codec_options": "",
+    # 19 视频具体编码
+    "video_encoder": "OMX.google.h264.encoder",
+    # 20 音频具体编码
+    "audio_encoder": "c2.android.opus.encoder",
+    # 21 scrcpy解锁设备锁屏
+    "power_off_on_close": False,
+    # 22 clipboard_autosync为True，在有选择文本才同步剪切板，False为随时获取剪切板
+    "clipboard_autosync": False,
+    # 23 报错时降低录屏尺寸
+    "downsize_on_error": True,
+    # 24 开启清理线程
+    "cleanup": True,
+    # 25 启动亮屏
+    "power_on": True,
+    # 26 列出支持的编码，为True时列出，此时server不运行
+    "list_encoders": False,
+    # 27 列出display_id,为True时列出，此时server不运行
+    "list_displays": False,
+    # 28 发送设备源信息，设备名，分辨率等
+    "send_device_meta": True,
+    # 29 发送帧源信息
+    "send_frame_meta": True,
+    # 30 发送video socket连接成功dummy_byte
+    "send_dummy_byte": True,
+    # 31 发送编码源信息
+    "send_codec_meta": True,
+    # 32 仅发送裸流，此时send_device_meta，send_frame_meta，send_dummy_byte，send_codec_meta会被置为False
+    "raw_video_stream": False
+}
 
 
 class Mobile(models.Model):
