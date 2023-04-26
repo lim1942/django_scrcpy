@@ -1,39 +1,10 @@
 import json
 
 from django import forms
-from general.models import Mobile
+from general.models import Mobile, LOG_LEVEL_CHOICE, VIDEO_ENCODER_CHOICE, AUDIO_ENCODER_CHOICE
 
 
 class MobileForm(forms.ModelForm):
-    LOG_LEVEL_CHOICE = (
-        ('verbose', 'verbose'),
-        ('debug', 'debug'),
-        ('info', 'info'),
-        ('warn', 'warn'),
-        ('error', 'error'),
-    )
-    VIDEO_ENCODER_CHOICE = (
-        # 264
-        ('OMX.google.h264.encoder', 'OMX.google.h264.encoder'),
-        ('OMX.qcom.video.encoder.avc', 'OMX.qcom.video.encoder.avc'),
-        ('c2.android.avc.encoder', 'c2.android.avc.encoder'),
-        ('c2.mtk.avc.encoder', 'c2.mtk.avc.encoder'),
-        ('OMX.MTK.VIDEO.ENCODER.AVC', 'OMX.MTK.VIDEO.ENCODER.AVC'),
-        # 265
-        ('OMX.qcom.video.encoder.hevc', 'OMX.qcom.video.encoder.hevc'),
-        ('OMX.qcom.video.encoder.hevc.cq', 'OMX.qcom.video.encoder.hevc.cq'),
-        ('c2.android.hevc.encoder', 'c2.android.hevc.encoder'),
-        ('c2.mtk.hevc.encoder', 'c2.mtk.hevc.encoder'),
-        ('OMX.MTK.VIDEO.ENCODER.HEVC', 'OMX.MTK.VIDEO.ENCODER.HEVC')
-    )
-    AUDIO_ENCODER_CHOICE = (
-        # opus
-        ('c2.android.opus.encoder', 'c2.android.opus.encoder'),
-        # acc
-        ('c2.android.aac.encoder', 'c2.android.aac.encoder'),
-        ('OMX.google.aac.encoder', 'OMX.google.aac.encoder'),
-    )
-
     log_level = forms.ChoiceField(label='日志等级', help_text='scrcpy 服务的日志等级', choices=LOG_LEVEL_CHOICE, required=False)
     audio = forms.BooleanField(label="开启声音", help_text="需要提前解锁手机", required=False)
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)
