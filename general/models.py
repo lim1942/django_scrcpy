@@ -28,6 +28,8 @@ AUDIO_ENCODER_CHOICE = (
     # acc
     ('c2.android.aac.encoder', 'c2.android.aac.encoder'),
     ('OMX.google.aac.encoder', 'OMX.google.aac.encoder'),
+    # raw
+    ('', '')
 )
 
 DEFAULT_SCRCPY_KWARGS = {

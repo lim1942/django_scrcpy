@@ -47,6 +47,8 @@ class MobileForm(forms.ModelForm):
             config_dict['video_codec'] = 'h264'
         if 'aac' in config_dict['audio_encoder']:
             config_dict['audio_codec'] = 'aac'
+        elif config_dict['audio_encoder'] == '':
+            config_dict['audio_codec'] = 'raw'
         else:
             config_dict['audio_codec'] = 'opus'
         # restore config_dict to config str
