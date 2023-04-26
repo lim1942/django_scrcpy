@@ -33,18 +33,13 @@ class MobileForm(forms.ModelForm):
         value = self.initial.get(field_name, field.initial)
         if callable(value):
             value = value()
-        config_dict = json.loads(self.instance.config)
-        if field_name in config_dict:
-            return config_dict[field_name]
-        else:
-            return value
+        return json.loads(self.instance.config).get(field_name, value)
 
     def clean(self):
         self._validate_unique = True
         config_dict = json.loads(self.instance.config)
-        for field in self.cleaned_data:
-            if field in config_dict:
-                config_dict[field] = self.cleaned_data[field]
+        # update config_dict by form fields
+        config_dict.update({field: self.cleaned_data[field] for field in self.cleaned_data if field in config_dict})
         # adapt codec name
         if ('hevc' in config_dict['video_encoder']) or ('HEVC' in config_dict['video_encoder']):
             config_dict['video_codec'] = 'h265'
@@ -54,6 +49,7 @@ class MobileForm(forms.ModelForm):
             config_dict['audio_codec'] = 'aac'
         else:
             config_dict['audio_codec'] = 'opus'
+        # restore config_dict to config str
         self.cleaned_data['config'] = json.dumps(config_dict)
         return self.cleaned_data
 

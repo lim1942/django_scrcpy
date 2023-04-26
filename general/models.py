@@ -75,7 +75,7 @@ DEFAULT_SCRCPY_KWARGS = {
     "power_off_on_close": False,
     # 22 clipboard_autosync为True，在有选择文本才同步剪切板，False为随时获取剪切板
     "clipboard_autosync": False,
-    # 23 报错时降低录屏尺寸
+    # 23 录屏编码错误，降低录屏尺寸适配
     "downsize_on_error": True,
     # 24 开启清理线程
     "cleanup": True,
