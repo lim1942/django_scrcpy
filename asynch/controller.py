@@ -47,18 +47,21 @@ class Controller:
         return inject_data
 
     async def inject_touch_event(self, x, y, action=android_motionevent_action.AMOTION_EVENT_ACTION_DOWN, touch_id=-1,
-                           pressure=0xFFFF, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
+                                 pressure=1, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
         action: android_motionevent_action
         touch_id: touch_id use to distinguish multi touch
-        pressure: touch pressure
-        buttons: android_motionevent_buttons
-        inject_data: lens 28
+        x: touch location x
+        y: touch location y
+        height: resolution height
+        width: resolution width
+        pressure: touch pressure. 0 or 1,1 is max
+        action_button: android_motionevent_buttons, mouse key
+        buttons: same as pressure 0 or 1
+        inject_data: lens 32
         """
         if action == android_motionevent_action.AMOTION_EVENT_ACTION_UP:
             pressure = 0
-        else:
-            pressure = 1
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT
         x, y = max(x, 0), max(y, 0)
         inject_data = struct.pack(">BBqiiHHHii", msg_type, action, touch_id, int(x), int(y),
@@ -69,7 +72,7 @@ class Controller:
     async def inject_scroll_event(self, x, y, distance_x, distance_y, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
         buttons: android_motionevent_buttons
-        inject_data: lens 25
+        inject_data: lens 21
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT
         x, y = max(x, 0), max(y, 0)
