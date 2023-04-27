@@ -128,9 +128,9 @@ class Controller:
         """
         inject_data: lens 2
         """
-        msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_CLIPBOARD
+        msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_SET_SCREEN_POWER_MODE
         inject_data = struct.pack(">BB", msg_type, screen_power_mode)
-        await self.inject(inject_data)
+        await self.inject_without_lock(inject_data)
         return inject_data
 
     async def swipe(self, x, y, end_x, end_y, unit=5, delay=1):

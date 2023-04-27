@@ -28,6 +28,7 @@
     <button id="v-_button">v-</button>
     <input id="power_checkbox" type="checkbox" value="26"/>
     <button id="power_button">power</button>
+    <button id="sw-state">sw-on</button>
   </div>
   <div>
     <button id="multi-key_button">multi-key</button>
@@ -99,6 +100,23 @@
           text: text,
           sequence: sequence,
           paste: paste
+        }
+        ws.send(JSON.stringify(msg))
+      }
+
+      // 10.sw
+      function toggle_sw(){
+        if (this.textContent=='sw-on'){
+          screen_power_mode=0
+          this.textContent='sw-off'
+        }
+        else{
+          screen_power_mode=2
+          this.textContent='sw-on'
+        }
+        msg = {
+          msg_type: 10,
+          screen_power_mode: window.screen_power_mode,
         }
         ws.send(JSON.stringify(msg))
       }
@@ -358,6 +376,7 @@
         add_button_mouse_event(document.getElementById('v+_button'), 24);
         add_button_mouse_event(document.getElementById('v-_button'), 25);
         add_button_mouse_event(document.getElementById('power_button'), 26);
+        document.getElementById('sw-state').addEventListener('click', toggle_sw)
         document.getElementById('get_clipboard_button').addEventListener('click', button_handle_get_clipboard)
         document.getElementById('set_clipboard_button').addEventListener('click', button_handle_set_clipboard)
         document.getElementById('multi-key_button').addEventListener('click', button_handle_multi_key)
@@ -369,6 +388,17 @@
       if (window.query_param_dict['audio'] != false){
         // raw audio
         if (window.query_param_dict['audio_codec'] == 'raw'){
+          window.audio_transform = function(data){
+            return data
+          }
+          window.audio_player = new PCMPlayer({
+            encoding: '16bitInt',
+            channels: 2,
+            sampleRate: 48000,
+            flushingTime: 70
+          });
+        }
+        else if (window.query_param_dict['audio_codec'] == 'opus'){
           window.audio_transform = function(data){
             return data
           }
