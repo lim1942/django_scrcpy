@@ -30,13 +30,16 @@
     <button id="power_button">power</button>
   </div>
   <div>
-    <a id="capture"></a><button id="capture_button">capture</button>
     <button id="multi-key_button">multi-key</button>
+    <a id="capture"></a><button id="capture_button">capture</button>
+    <button onclick="javascript:location.reload();">refresh</button>
   </div>
+  <span>If no voice, please click refresh.</span>
 </div>
 <script type="text/javascript" src="/static/general/js/Decoder.js"></script>
 <script type="text/javascript" src="/static/general/js/YUVCanvas.js"></script>
 <script type="text/javascript" src="/static/general/js/Player.js"></script>
+<script type="text/javascript" src="/static/general/js/pcm-player.min.js"></script>
 <script>
       // 0.keycode事件
       function inject_keycode(keycode, action){
@@ -323,6 +326,7 @@
       window.device_id =  "{{device_id}}"
       window.query_param = window.location.href.split('?')[1]
       window.query_param_dict = JSON.parse(decodeURIComponent(window.query_param.split('=')[1]))
+
       // 2.给Date对象增加时间格式化方法
       Date.prototype.formatCode = function (formatStr = "yyyy-MM-DD HH:mm:ss") {
         const paddingZero = num => num >= 10 ? num : '0' + num;
@@ -336,11 +340,13 @@
         str = str.replace(/SS/, paddingZero(this.getMilliseconds()));
         return str;
       };
-      // 3.初始化播放器, 给播放器添加事件监听，播放器增加到dom中
+
+      // 3.=====video support=====
       var playerElement = document.getElementById('container')
       window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
       playerElement.appendChild(window.player.canvas);
-      // 4.绑定事件监听
+
+      // 4.=====control support=====
       document.getElementById('capture_button').addEventListener('click', button_handle_capture)
       if (window.query_param_dict['control'] != false){
         add_canvas_touch_event(window.player.canvas);
@@ -356,7 +362,26 @@
         document.getElementById('set_clipboard_button').addEventListener('click', button_handle_set_clipboard)
         document.getElementById('multi-key_button').addEventListener('click', button_handle_multi_key)
       }
-      // 5.初始化websocket
+
+      // 5.=====audio support=====
+      window.audio_player = null
+      window.audio_transform = null
+      if (window.query_param_dict['audio'] != false){
+        // raw audio
+        if (window.query_param_dict['audio_codec'] == 'raw'){
+          window.audio_transform = function(data){
+            return data
+          }
+          window.audio_player = new PCMPlayer({
+            encoding: '16bitInt',
+            channels: 2,
+            sampleRate: 48000,
+            flushingTime: 70
+          });
+        }
+      }
+
+      // 6.=====websocket=====
       var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.query_param
       var ws = new WebSocket(ws_url)
       ws.binaryType = 'arraybuffer'
@@ -379,6 +404,12 @@
             }
             else if(start_code.endsWith('1')){
                 console.log("paste_sequence:", data)
+            }
+          }
+          //3.音频流数据
+          else if(start_code.startsWith('0003')){
+            if (window.audio_player){
+              window.audio_player.feed(window.audio_transform(unit8_data.slice(4)))
             }
           }
       }

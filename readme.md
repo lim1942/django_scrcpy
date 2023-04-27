@@ -2,11 +2,12 @@
 ![](https://img.shields.io/badge/windows-grey)
 ![](https://img.shields.io/badge/linux-grey)
 ![](https://img.shields.io/badge/python-3.7-green)  
-实现安卓设备的web投屏和操控，提供一个配置管理页用于配置各设备的投屏参数(帧率，尺寸等),支持多设备。  
-Android Device remote display and control in browser page.   
+手机web投屏和操控，支持音频，提供一个配置管理页用于配置各设备的投屏参数(帧率，尺寸等),支持多设备。  
+Android Device remote display and control in browser page.audio support   
 Provide manage site to configure display(frame-rate,screen-size,bit-rate), support multi devices.  
 - web scrcpy
 - file manage
+- audio forward(Android>=11)
 
 ![image](asset/device.png)
 ![image](asset/admin.png)

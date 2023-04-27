@@ -150,7 +150,6 @@ class DeviceClient:
                 frame_meta = await self.audio_socket.read_exactly(12)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.audio_socket.read_exactly(data_length)
-                self.update_resolution(current_nal_data)
                 # 2.向客户端发送当前nal
                 for ws_client in self.ws_client_list:
                     await ws_client.send(bytes_data=format_audio_data(current_nal_data))
