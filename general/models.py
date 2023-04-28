@@ -1,6 +1,7 @@
 import json
 from django.db import models
 
+
 LOG_LEVEL_CHOICE = (
     ('verbose', 'verbose'),
     ('debug', 'debug'),
@@ -8,6 +9,7 @@ LOG_LEVEL_CHOICE = (
     ('warn', 'warn'),
     ('error', 'error'),
 )
+
 VIDEO_ENCODER_CHOICE = (
     # 264
     ('OMX.google.h264.encoder', 'OMX.google.h264.encoder'),
@@ -22,14 +24,15 @@ VIDEO_ENCODER_CHOICE = (
     ('c2.mtk.hevc.encoder', 'c2.mtk.hevc.encoder'),
     ('OMX.MTK.VIDEO.ENCODER.HEVC', 'OMX.MTK.VIDEO.ENCODER.HEVC')
 )
+
 AUDIO_ENCODER_CHOICE = (
-    # raw
-    ('', ''),
     # opus
     ('c2.android.opus.encoder', 'c2.android.opus.encoder'),
     # acc
     ('c2.android.aac.encoder', 'c2.android.aac.encoder'),
     ('OMX.google.aac.encoder', 'OMX.google.aac.encoder'),
+    # raw
+    ('', ''),
 )
 
 DEFAULT_SCRCPY_KWARGS = {
@@ -46,7 +49,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 6 画面最大尺寸
     "max_size": 720,
     # 7 视频比特率
-    "video_bit_rate": 8000000,
+    "video_bit_rate": 800000,
     # 8 音频比特率
     "audio_bit_rate": 128000,
     # 9 视频帧率
