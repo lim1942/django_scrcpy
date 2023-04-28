@@ -406,7 +406,7 @@
                 window.audio_player.feed(buffer)
               },
           });
-          window.audio_player = new PCMPlayer({encoding: '32bitFloat', channels: 2, sampleRate: 48000, flushingTime: 70});
+          window.audio_player = new PCMPlayer({encoding: '32bitFloat', channels: 2, sampleRate: 48000, flushingTime: 30});
           window.audio_decoder.configure({codec: 'opus', numberOfChannels: 2, sampleRate: 48000, })
           window.audio_player_feed = function(data){
             if (data[0] == 252){
