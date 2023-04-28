@@ -423,8 +423,12 @@
                 // AAC decodes to "f32-planar",
                 // converting to another format may cause audio glitches on Chrome.
                 const options = { format: "f32-planar", planeIndex: 0, };
-                const buffer = new Float32Array( output.allocationSize(options) / Float32Array.BYTES_PER_ELEMENT );
-                output.copyTo(buffer, options);
+                const planar_buffer = new Float32Array(output.allocationSize(options) / Float32Array.BYTES_PER_ELEMENT);
+                output.copyTo(planar_buffer, options);
+                const buffer = new Float32Array(planar_buffer.length*2)
+                for (i = 0; i < planar_buffer.length; i++){
+                  buffer[2*i] = buffer[2*i+1] = planar_buffer[i]
+                }
                 window.audio_player.feed(buffer)
               },
           });
