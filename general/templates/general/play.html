@@ -48,8 +48,9 @@
 <script type="text/javascript" src="/static/general/js/pcm-player.min.js"></script>
 <script type="module">
   import { h264ParseConfiguration} from "/static/general/js/h264_parse.js";
+  import { h265ParseConfiguration} from "/static/general/js/h265_parse.js";
   window.h264ParseConfiguration = h264ParseConfiguration
-
+  window.h265ParseConfiguration = h265ParseConfiguration
 </script>
 <script>
       // 0.keycode事件
@@ -296,7 +297,7 @@
   // 处理截图
   function button_handle_capture(){
       var ele = document.getElementById('capture')
-      ele.href = document.getElementById('container').childNodes[0].toDataURL()
+      ele.href = window.video_renderer_canvas.toDataURL()
       ele.download = window.device_id + '_' + (new Date().formatCode()) + '.png'
       ele.click()
   }
@@ -368,6 +369,7 @@
       window.device_id =  "{{device_id}}"
       window.query_param = window.location.href.split('?')[1]
       window.query_param_dict = JSON.parse(decodeURIComponent(window.query_param.split('=')[1]))
+      console.log("scrcpy_kwargs:", window.query_param_dict)
       // 3.control support
       document.getElementById('capture_button').addEventListener('click', button_handle_capture)
       if (window.query_param_dict['control'] != false){
@@ -388,7 +390,6 @@
     function load_audio_player(){
       window.audio_player = null
       if (window.query_param_dict['audio'] != false){
-        console.log("audio decoder use:", window.query_param_dict['audio_codec'])
         // 2.1 raw audio
         if (window.query_param_dict['audio_codec'] == 'raw'){
           window.audio_player = new PCMPlayer({encoding: '16bitInt', channels: 2, sampleRate: 48000, flushingTime: 70 });
@@ -471,26 +472,42 @@
       );
   }
 
-  function load_video_player(){
+  function handle_config_data(data){
+    if (window.video_config_data!== undefined){
+      fix_data = new Uint8Array(window.video_config_data.byteLength + data.byteLength)
+      fix_data.set(window.video_config_data, 0)
+      fix_data.set(data, window.video_config_data.byteLength)
+      data = fix_data
+      window.video_config_data = undefined
+    }
+    return data
+  }
+
+  function attach_canvas(canvas){
     playerElement = document.getElementById('container')
-    if (document.getElementById('video_play_select').value!='broardway'){
+    playerElement.innerHTML = ""
+    playerElement.appendChild(canvas)
+    window.video_renderer_canvas = canvas
+    // canvas control support
+    if (window.query_param_dict['control'] != false){
+      add_canvas_touch_event(canvas);
+      add_canvas_swipe_event(canvas);
+      add_canvas_scroll_event(canvas);
+    }
+  }
+
+  function load_video_player(){
+    if (document.getElementById('video_play_select').value=='broardway'){
       window.video_player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
-      playerElement.innerHTML = ""
-      playerElement.appendChild(window.video_player.canvas);
       window.video_player_feed = function(data){window.video_player.decode(data)}
-      // canvas control support
-      if (window.query_param_dict['control'] != false){
-        add_canvas_touch_event(window.video_player.canvas);
-        add_canvas_swipe_event(window.video_player.canvas);
-        add_canvas_scroll_event(window.video_player.canvas);
-      }
+      attach_canvas(window.video_player.canvas)
     }
     else{
+      window.video_decoder = new VideoDecoder({
+        output: function(frame){ window.video_renderer_context.drawImage(frame, 0, 0); frame.close(); },
+        error: function(e) { console.log(e) }
+      })
       if (window.query_param_dict['video_codec'] == 'h264'){
-        window.video_decoder = new VideoDecoder({
-            output: function(frame){ window.video_renderer_context.drawImage(frame, 0, 0); frame.close(); },
-            error: function(e) { console.log(e) }
-        })
         window.video_player_feed = function(data){
           if (data[4]==103){
             const { profileIndex, constraintSet, levelIndex, croppedWidth, croppedHeight,} = window.h264ParseConfiguration(data);
@@ -499,33 +516,59 @@
             video_renderer_canvas = document.createElement("canvas")
             video_renderer_canvas.width = croppedWidth;
             video_renderer_canvas.height = croppedHeight;
-            playerElement.innerHTML = ""
-            playerElement.appendChild(video_renderer_canvas)
-            window.video_renderer_context = video_renderer_canvas.getContext("2d")
-            // canvas control support
-            if (window.query_param_dict['control'] != false){
-              add_canvas_touch_event(video_renderer_canvas);
-              add_canvas_swipe_event(video_renderer_canvas);
-              add_canvas_scroll_event(video_renderer_canvas);
-            }
+            attach_canvas(video_renderer_canvas)
             window.video_config_data = data
+            window.video_renderer_context = video_renderer_canvas.getContext("2d")
           }
           else{
             // 第一个key贞必须拼接上配置贞
-            if (window.video_config_data!== undefined){
-              fix_data = new Uint8Array(window.video_config_data.byteLength + data.byteLength)
-              fix_data.set(window.video_config_data, 0)
-              fix_data.set(data, window.video_config_data.byteLength)
-              data = fix_data
-              window.video_config_data = undefined
-            }
+            data = handle_config_data(data)
             chunk = new EncodedVideoChunk({ type: data[4] in [101, 69, 37] ? "key" : "delta", timestamp: 0, data:data})
             window.video_decoder.decode(chunk)
           }
         }
       }
       else if (window.query_param_dict['video_codec'] == 'h265'){
-        console.log('h265')
+        window.video_player_feed = function(data){
+          if (data[4]==64){
+            const {
+              generalProfileSpace,
+              generalProfileIndex,
+              generalProfileCompatibilitySet,
+              generalTierFlag,
+              generalLevelIndex,
+              generalConstraintSet,
+              croppedWidth,
+              croppedHeight,
+            } = window.h265ParseConfiguration(data);
+            const codec = [ "hev1",
+              ["", "A", "B", "C"][generalProfileSpace] +
+                  generalProfileIndex.toString(),
+              toUint32Le(generalProfileCompatibilitySet, 0).toString(16),
+              (generalTierFlag ? "H" : "L") +
+                  generalLevelIndex.toString(),
+              toUint32Le(generalConstraintSet, 0)
+                  .toString(16)
+                  .toUpperCase(),
+              toUint32Le(generalConstraintSet, 4)
+                  .toString(16)
+                  .toUpperCase(),
+            ].join(".")
+            window.video_decoder.configure({ codec: codec, optimizeForLatency: true })
+            video_renderer_canvas = document.createElement("canvas")
+            video_renderer_canvas.width = croppedWidth;
+            video_renderer_canvas.height = croppedHeight;
+            attach_canvas(video_renderer_canvas)
+            window.video_config_data = data
+            window.video_renderer_context = video_renderer_canvas.getContext("2d")
+          }
+          else{
+            // 第一个key贞必须拼接上配置贞
+            data = handle_config_data(data)
+            chunk = new EncodedVideoChunk({ type: data[4] in [38] ? "key" : "delta", timestamp: 0, data:data})
+            window.video_decoder.decode(chunk)
+          }
+        }
       }
     }
   }
@@ -536,7 +579,7 @@
       window.ws = new WebSocket(ws_url)
       window.ws.binaryType = 'arraybuffer'
       window.ws.onopen = function (e) {
-          console.log('Client connected')
+          console.log('ws:Client connected')
       }
       window.ws.onmessage = function (msg) {
           unit8_data = new Uint8Array(msg.data)
@@ -564,7 +607,7 @@
           }
       }
       window.ws.onclose = function (e) {
-          console.log('Client disconnected')
+          console.log('ws: Client disconnected')
       }
    }
 </script>
