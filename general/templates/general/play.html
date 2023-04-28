@@ -6,6 +6,13 @@
 <div id='container' style="display: inline-block;"></div>
 <div style="display: inline-block; vertical-align:top;">
   <div>
+    <select id="video_play_select" style="width:100px;height:30px">
+        <option value="broardway">broardway</option>
+        <option value="webcodecs">webcodecs</option>
+    </select>
+    <button id="reload_button">reload</button>
+  </div>
+  <div>
     <input id="get_clipboard" style="height:40px;width:200px;margin-bottom:5px;">
     <button id="get_clipboard_button">get_clipboard</button>
   </div>
@@ -33,7 +40,6 @@
   <div>
     <button id="multi-key_button">multi-key</button>
     <a id="capture"></a><button id="capture_button">capture</button>
-    <button onclick="javascript:location.reload();">refresh</button>
   </div>
 </div>
 <script type="text/javascript" src="/static/general/js/Decoder.js"></script>
@@ -338,13 +344,9 @@
      })
   }
 </script>
-<script >
-      // 1.记录device_id到window对象
-      window.device_id =  "{{device_id}}"
-      window.query_param = window.location.href.split('?')[1]
-      window.query_param_dict = JSON.parse(decodeURIComponent(window.query_param.split('=')[1]))
-
-      // 2.给Date对象增加时间格式化方法
+<script>
+    function load_utils(){
+      // 1 给Date对象增加时间格式化方法
       Date.prototype.formatCode = function (formatStr = "yyyy-MM-DD HH:mm:ss") {
         const paddingZero = num => num >= 10 ? num : '0' + num;
         let str = formatStr;
@@ -357,18 +359,13 @@
         str = str.replace(/SS/, paddingZero(this.getMilliseconds()));
         return str;
       };
-
-      // 3.=====video support=====
-      var playerElement = document.getElementById('container')
-      window.player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
-      playerElement.appendChild(window.player.canvas);
-
-      // 4.=====control support=====
+      // 2.记录device_id到window对象
+      window.device_id =  "{{device_id}}"
+      window.query_param = window.location.href.split('?')[1]
+      window.query_param_dict = JSON.parse(decodeURIComponent(window.query_param.split('=')[1]))
+      // 3.control support
       document.getElementById('capture_button').addEventListener('click', button_handle_capture)
       if (window.query_param_dict['control'] != false){
-        add_canvas_touch_event(window.player.canvas);
-        add_canvas_swipe_event(window.player.canvas);
-        add_canvas_scroll_event(window.player.canvas);
         add_button_mouse_event(document.getElementById('menu_button'), 82);
         add_button_mouse_event(document.getElementById('home_button'), 3);
         add_button_mouse_event(document.getElementById('back_button'), 4);
@@ -380,19 +377,21 @@
         document.getElementById('set_clipboard_button').addEventListener('click', button_handle_set_clipboard)
         document.getElementById('multi-key_button').addEventListener('click', button_handle_multi_key)
       }
-
-      // 5.=====audio support=====
+    }
+</script>
+<script>
+    function load_audio_player(){
       window.audio_player = null
       if (window.query_param_dict['audio'] != false){
         console.log(window.query_param_dict['audio_codec'])
-        // 5.1 raw audio
+        // 2.1 raw audio
         if (window.query_param_dict['audio_codec'] == 'raw'){
           window.audio_player = new PCMPlayer({encoding: '16bitInt', channels: 2, sampleRate: 48000, flushingTime: 70 });
           window.audio_player_feed = function(data){
             window.audio_player.feed(data)
           }
         }
-        // 5.2 opus audio
+        // 2.2 opus audio
         else if (window.query_param_dict['audio_codec'] == 'opus'){
           try{
             window.audio_decoder = new AudioDecoder({
@@ -418,7 +417,7 @@
             console.log(e)
             }
         }
-        // 5.3 aac audio
+        // 2.3 aac audio
         else if (window.query_param_dict['audio_codec'] == 'aac'){
           try{
             window.audio_decoder = new AudioDecoder({
@@ -451,20 +450,42 @@
             }
         }
       }
-
-      // 6.=====websocket=====
+    }
+</script>
+<script>
+  function load_video_player(){
+      playerElement = document.getElementById('container')
+      playerElement.innerHTML = ""
+      if (document.getElementById('video_play_select').value=='broardway'){
+        window.video_player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
+        playerElement.appendChild(window.video_player.canvas);
+        window.player_feed = function(data){window.video_player.decode(data)}
+      }
+      else{
+        console.log("no video player")
+      }
+      // canvas control support
+      if (window.query_param_dict['control'] != false){
+        add_canvas_touch_event(window.video_player.canvas);
+        add_canvas_swipe_event(window.video_player.canvas);
+        add_canvas_scroll_event(window.video_player.canvas);
+      }
+  }
+</script>
+<script >
+   function load_websocket(){
       var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.query_param
-      var ws = new WebSocket(ws_url)
-      ws.binaryType = 'arraybuffer'
-      ws.onopen = function (e) {
+      window.ws = new WebSocket(ws_url)
+      window.ws.binaryType = 'arraybuffer'
+      window.ws.onopen = function (e) {
           console.log('Client connected')
       }
-      ws.onmessage = function (msg) {
+      window.ws.onmessage = function (msg) {
           unit8_data = new Uint8Array(msg.data)
           start_code = unit8_data.slice(0, 5).join('')
           // 1.视频流数据
           if (start_code.startsWith('0001')){
-            window.player.decode(unit8_data);
+            window.player_feed(unit8_data)
           }
           //2.其它流数据
           else if(start_code.startsWith('0002')){
@@ -484,9 +505,28 @@
             }
           }
       }
-      ws.onclose = function (e) {
+      window.ws.onclose = function (e) {
           console.log('Client disconnected')
       }
+   }
+</script>
+<script>
+    // reload
+    function reload(){
+      window.ws.close()
+      load_audio_player()
+      load_video_player()
+      load_websocket()
+    }
+
+    // window onload
+    window.onload = function(){
+      document.getElementById('reload_button').addEventListener('click', reload)
+      load_utils()
+      load_audio_player()
+      load_video_player()
+      load_websocket()
+    }
 </script>
 </body>
 </html>
