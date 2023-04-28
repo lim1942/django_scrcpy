@@ -35,7 +35,6 @@
     <a id="capture"></a><button id="capture_button">capture</button>
     <button onclick="javascript:location.reload();">refresh</button>
   </div>
-  <span>If no voice, please click refresh.</span>
 </div>
 <script type="text/javascript" src="/static/general/js/Decoder.js"></script>
 <script type="text/javascript" src="/static/general/js/YUVCanvas.js"></script>
@@ -384,8 +383,8 @@
 
       // 5.=====audio support=====
       window.audio_player = null
-      window.audio_transform = null
       if (window.query_param_dict['audio'] != false){
+        console.log(window.query_param_dict['audio_codec'])
         // 5.1 raw audio
         if (window.query_param_dict['audio_codec'] == 'raw'){
           window.audio_player = new PCMPlayer({encoding: '16bitInt', channels: 2, sampleRate: 48000, flushingTime: 70 });
@@ -395,53 +394,61 @@
         }
         // 5.2 opus audio
         else if (window.query_param_dict['audio_codec'] == 'opus'){
-          window.audio_decoder = new AudioDecoder({
-            error(error) { console.log("audio decoder error: ", error); },
-            output(output) {
-                // Opus decodes to "f32",
-                // converting to another format may cause audio glitches on Chrome.
-                const options = { format: "f32", planeIndex: 0, };
-                const buffer = new Float32Array( output.allocationSize(options) / Float32Array.BYTES_PER_ELEMENT );
-                output.copyTo(buffer, options);
-                window.audio_player.feed(buffer)
-              },
-          });
-          window.audio_player = new PCMPlayer({encoding: '32bitFloat', channels: 2, sampleRate: 48000, flushingTime: 30});
-          window.audio_decoder.configure({codec: 'opus', numberOfChannels: 2, sampleRate: 48000, })
-          window.audio_player_feed = function(data){
-            if (data[0] == 252){
-              chunk = new EncodedAudioChunk({ type: "key", timestamp: 0, data: data })
-              window.audio_decoder.decode(chunk)
+          try{
+            window.audio_decoder = new AudioDecoder({
+              error(error) { console.log("audio decoder error: ", error); },
+              output(output) {
+                  // Opus decodes to "f32",
+                  // converting to another format may cause audio glitches on Chrome.
+                  const options = { format: "f32", planeIndex: 0, };
+                  const buffer = new Float32Array( output.allocationSize(options) / Float32Array.BYTES_PER_ELEMENT );
+                  output.copyTo(buffer, options);
+                  window.audio_player.feed(buffer)
+                },
+            });
+            window.audio_player = new PCMPlayer({encoding: '32bitFloat', channels: 2, sampleRate: 48000, flushingTime: 30});
+            window.audio_decoder.configure({codec: 'opus', numberOfChannels: 2, sampleRate: 48000, })
+            window.audio_player_feed = function(data){
+              if (data[0] == 252){
+                chunk = new EncodedAudioChunk({ type: "key", timestamp: 0, data: data })
+                window.audio_decoder.decode(chunk)
+              }
             }
-          }
+          } catch (e) {
+            console.log(e)
+            }
         }
         // 5.3 aac audio
         else if (window.query_param_dict['audio_codec'] == 'aac'){
-          window.audio_decoder = new AudioDecoder({
-            error(error) { console.log("audio decoder error: ", error); },
-            output(output) {
-                // AAC decodes to "f32-planar",
-                // converting to another format may cause audio glitches on Chrome.
-                const options = { format: "f32-planar", planeIndex: 0, };
-                const planar_buffer = new Float32Array(output.allocationSize(options) / Float32Array.BYTES_PER_ELEMENT);
-                output.copyTo(planar_buffer, options);
-                const buffer = new Float32Array(planar_buffer.length*2)
-                for (i = 0; i < planar_buffer.length; i++){
-                  buffer[2*i] = buffer[2*i+1] = planar_buffer[i]
-                }
-                window.audio_player.feed(buffer)
-              },
-          });
-          window.audio_player = new PCMPlayer({encoding: '32bitFloat', channels: 2, sampleRate: 48000, flushingTime: 20});
-          window.audio_player_feed = function(data){
-            if (data[0]==17){
-              window.audio_decoder.configure({codec: 'mp4a.66', numberOfChannels: 2, sampleRate: 48000, description:data})
+          try{
+            window.audio_decoder = new AudioDecoder({
+              error(error) { console.log("audio decoder error: ", error); },
+              output(output) {
+                  // AAC decodes to "f32-planar",
+                  // converting to another format may cause audio glitches on Chrome.
+                  const options = { format: "f32-planar", planeIndex: 0, };
+                  const planar_buffer = new Float32Array(output.allocationSize(options) / Float32Array.BYTES_PER_ELEMENT);
+                  output.copyTo(planar_buffer, options);
+                  const buffer = new Float32Array(planar_buffer.length*2)
+                  for (i = 0; i < planar_buffer.length; i++){
+                    buffer[2*i] = buffer[2*i+1] = planar_buffer[i]
+                  }
+                  window.audio_player.feed(buffer)
+                },
+            });
+            window.audio_player = new PCMPlayer({encoding: '32bitFloat', channels: 2, sampleRate: 48000, flushingTime: 20});
+            window.audio_player_feed = function(data){
+              if (data[0]==17){
+                window.audio_decoder.configure({codec: 'mp4a.66', numberOfChannels: 2, sampleRate: 48000, description:data})
+              }
+              else {
+                chunk = new EncodedAudioChunk({ type: "key", timestamp: 0, data: data})
+                window.audio_decoder.decode(chunk)
+              }
             }
-            else {
-              chunk = new EncodedAudioChunk({ type: "key", timestamp: 0, data: data})
-              window.audio_decoder.decode(chunk)
+          } catch (e) {
+            console.log(e)
             }
-          }
         }
       }
 

@@ -45,7 +45,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 4 音频编码类型
     "video_codec": "h264",
     # 5 音频编码类型
-    "audio_codec": "raw",
+    "audio_codec": "opus",
     # 6 画面最大尺寸
     "max_size": 720,
     # 7 视频比特率
@@ -75,7 +75,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 19 视频具体编码
     "video_encoder": "OMX.google.h264.encoder",
     # 20 音频具体编码
-    "audio_encoder": "",
+    "audio_encoder": "c2.android.opus.encoder",
     # 21 scrcpy解锁设备锁屏
     "power_off_on_close": False,
     # 22 clipboard_autosync为True，在有选择文本才同步剪切板，False为随时获取剪切板
