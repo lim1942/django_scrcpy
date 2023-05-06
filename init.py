@@ -11,8 +11,7 @@ except ImportError as exc:
         "forget to activate a virtual environment?"
     ) from exc
 execute_from_command_line(['manage.py', 'migrate'])
-if not os.path.exists('staticfiles'):
-    execute_from_command_line(['manage.py', 'collectstatic'])
+execute_from_command_line(['manage.py', 'collectstatic', '--noinput'])
 print('\n==================================================')
 print('Please create a super user !!!')
 print('==================================================')
