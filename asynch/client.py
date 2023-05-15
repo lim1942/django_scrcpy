@@ -102,7 +102,8 @@ class DeviceClient:
         if self.scrcpy_kwargs['audio']:
             self.audio_socket = await self.adb_device.create_connection_socket(socket_name, timeout=self.connect_timeout)
         # 3.control_socket
-        self.control_socket = await self.adb_device.create_connection_socket(socket_name, timeout=self.connect_timeout)
+        if self.scrcpy_kwargs['control']:
+            self.control_socket = await self.adb_device.create_connection_socket(socket_name, timeout=self.connect_timeout)
 
     async def _deploy_task(self):
         while True:
