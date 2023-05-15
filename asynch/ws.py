@@ -1,4 +1,3 @@
-import json
 from urllib import parse
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -8,8 +7,6 @@ from asynch.serializers import ReceiveMsgObj, format_get_clipboard_data, format_
 
 
 class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
-    DEVICE_CLIENT_DICT = dict()
-
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.device_id = None
@@ -21,20 +18,9 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         # 1.获取请求参数
         self.query_params = parse.parse_qs(self.scope['query_string'].decode())
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
-        # 2.获取当前ws_client对应的device_client
-        scrcpy_kwargs = json.loads(self.query_params['config'][0])
-        old_device_client = self.DEVICE_CLIENT_DICT.get(self.device_id, None)
-        if old_device_client:
-            self.device_client = old_device_client
-            self.device_client.scrcpy_kwargs = scrcpy_kwargs
-        else:
-            self.device_client = self.DEVICE_CLIENT_DICT[self.device_id] = DeviceClient(self.device_id, scrcpy_kwargs)
-        # 3.记录当前client到CLIENT_DICT
-        self.device_client.ws_client_list.append(self)
-        # 4.重新开始连接device,重新开始任务
-        async with self.device_client.device_lock:
-            await self.device_client.stop()
-            await self.device_client.start()
+        # 2.获取当前ws_client对应的 device_client
+        self.device_client = DeviceClient(self)
+        await self.device_client.start()
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
@@ -81,7 +67,4 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
             await self.device_client.controller.swipe(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y, unit=obj.unit, delay=obj.delay)
 
     async def disconnect(self, code):
-        self.device_client.ws_client_list.remove(self)
-        if not self.device_client.ws_client_list:
-            async with self.device_client.device_lock:
-                await self.device_client.stop()
+        await self.device_client.stop()

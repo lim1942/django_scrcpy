@@ -1,4 +1,5 @@
 import os
+import json
 import random
 import struct
 import asyncio
@@ -29,11 +30,11 @@ class DeviceClient:
             # [task cancel operation no effect] 3.task already finished with a normal Exception
             print(f"task await exception {type(e)}, {e}")
 
-    def __init__(self, device_id, scrcpy_kwargs):
+    def __init__(self, ws_client):
         # scrcpy参数
-        self.scrcpy_kwargs = scrcpy_kwargs
+        self.scrcpy_kwargs = json.loads(ws_client.query_params['config'][0])
         # devices
-        self.device_id = device_id
+        self.device_id = ws_client.device_id
         self.adb_device = AsyncAdbDevice(self.device_id)
         # socket
         self.deploy_socket = None
@@ -52,7 +53,7 @@ class DeviceClient:
         # 设备控制器
         self.controller = Controller(self)
         # 需要推流的ws_client
-        self.ws_client_list = list()
+        self.ws_client = ws_client
 
     def update_resolution(self, current_nal_data):
         # when read a sps frame, change origin resolution
@@ -127,8 +128,7 @@ class DeviceClient:
                     current_nal_data = await self.video_socket.read_exactly(data_length)
                     self.update_resolution(current_nal_data)
                     # 2.向客户端发送当前nal
-                    for ws_client in self.ws_client_list:
-                        await ws_client.send(bytes_data=current_nal_data)
+                    await self.ws_client.send(bytes_data=current_nal_data)
                 except (asyncio.streams.IncompleteReadError, AttributeError):
                     break
         else:
@@ -137,8 +137,7 @@ class DeviceClient:
                     data = await self.video_socket.read_until(b'\x00\x00\x00\x01')
                     current_nal_data = b'\x00\x00\x00\x01' + data.rstrip(b'\x00\x00\x00\x01')
                     self.update_resolution(current_nal_data)
-                    for ws_client in self.ws_client_list:
-                        await ws_client.send(bytes_data=current_nal_data)
+                    await self.ws_client.send(bytes_data=current_nal_data)
                 except (asyncio.streams.IncompleteReadError, AttributeError):
                     break
 
@@ -151,8 +150,7 @@ class DeviceClient:
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.audio_socket.read_exactly(data_length)
                 # 2.向客户端发送当前nal
-                for ws_client in self.ws_client_list:
-                    await ws_client.send(bytes_data=format_audio_data(current_nal_data))
+                await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
             except (asyncio.streams.IncompleteReadError, AttributeError):
                 break
 
@@ -169,27 +167,15 @@ class DeviceClient:
 
     async def stop(self):
         # video
-        if self.video_socket:
-            await self.video_socket.disconnect()
-            self.video_socket = None
-        if self.video_task:
-            await self.cancel_task(self.video_task)
-            self.video_task = None
+        await self.video_socket.disconnect()
+        await self.cancel_task(self.video_task)
         # audio
-        if self.audio_socket:
+        if self.scrcpy_kwargs['audio']:
             await self.audio_socket.disconnect()
-            self.audio_socket = None
-        if self.audio_task:
             await self.cancel_task(self.audio_task)
-            self.audio_task = None
         # control
         if self.control_socket:
             await self.control_socket.disconnect()
-            self.control_socket = None
         # deploy
-        if self.deploy_socket:
-            await self.deploy_socket.disconnect()
-            self.deploy_socket = None
-        if self.deploy_task:
-            await self.cancel_task(self.deploy_task)
-            self.deploy_task = None
+        await self.deploy_socket.disconnect()
+        await self.cancel_task(self.deploy_task)
