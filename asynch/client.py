@@ -104,6 +104,12 @@ class DeviceClient:
         # 3.control_socket
         if self.scrcpy_kwargs['control']:
             self.control_socket = await self.adb_device.create_connection_socket(socket_name, timeout=self.connect_timeout)
+        # 4.metadata
+        self.device_name = (await self.video_socket.read_exactly(64)).decode("utf-8").rstrip("\x00")
+        video_info = (await self.video_socket.read_exactly(12))
+        accept_video_encode = video_info[:4]
+        self.resolution = struct.unpack(">LL", video_info[4:])
+        accept_audio_encode = await self.audio_socket.read_exactly(4)
 
     async def _deploy_task(self):
         while True:
@@ -113,10 +119,6 @@ class DeviceClient:
             print(f"【{self.device_id}】:", data.rstrip('\r\n').rstrip('\n'))
 
     async def _video_task(self):
-        self.device_name = (await self.video_socket.read_exactly(64)).decode("utf-8").rstrip("\x00")
-        video_info = (await self.video_socket.read_exactly(12))
-        accept_video_encode = video_info[:4]
-        self.resolution = struct.unpack(">LL", video_info[4:])
         if self.scrcpy_kwargs['send_frame_meta']:
             while True:
                 try:
@@ -143,7 +145,6 @@ class DeviceClient:
                     break
 
     async def _audio_task(self):
-        accept_audio_encode = await self.audio_socket.read_exactly(4)
         while True:
             try:
                 # 1.读取frame_meta
