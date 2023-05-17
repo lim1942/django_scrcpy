@@ -9,9 +9,13 @@ from h26x_extractor.nalutypes import SPS
 from asynch.controller import Controller
 from asynch.adb import AsyncAdbDevice
 from asynch.serializers import format_audio_data
+from asynch.recorder import Recorder
 
 
 class DeviceClient:
+    # 录屏工具
+    recorder = Recorder
+    recorder.start_server()
     # socket超时时间,毫秒
     connect_timeout = 300
 
@@ -54,6 +58,12 @@ class DeviceClient:
         self.controller = Controller(self)
         # 需要推流的ws_client
         self.ws_client = ws_client
+        # 录屏相关
+        self.recorder_socket = self.recorder.get_recorder_socket('123456')
+
+    async def recorder_socket_send(self, data):
+        if self.recorder_socket:
+            await self.recorder_socket.write(data)
 
     def update_resolution(self, current_nal_data):
         # when read a sps frame, change origin resolution
@@ -109,7 +119,13 @@ class DeviceClient:
         video_info = (await self.video_socket.read_exactly(12))
         accept_video_encode = video_info[:4]
         self.resolution = struct.unpack(">LL", video_info[4:])
-        accept_audio_encode = await self.audio_socket.read_exactly(4)
+        # 5.send to recorder socket
+        await self.recorder_socket_send(video_info)
+        if self.scrcpy_kwargs['audio']:
+            accept_audio_encode = await self.audio_socket.read_exactly(4)
+            await self.recorder_socket_send(accept_audio_encode)
+        else:
+            await self.recorder_socket_send(struct.pack(">L", 0))
 
     async def _deploy_task(self):
         while True:
@@ -132,6 +148,7 @@ class DeviceClient:
                     self.update_resolution(current_nal_data)
                     # 2.向客户端发送当前nal
                     await self.ws_client.send(bytes_data=current_nal_data)
+                    await self.recorder_socket_send(frame_meta+current_nal_data)
                 except (asyncio.streams.IncompleteReadError, AttributeError):
                     break
         else:

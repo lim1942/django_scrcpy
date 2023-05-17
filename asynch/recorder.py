@@ -1,30 +1,41 @@
 import asyncio
+import threading
+from asynch.nettool import AsyncSocket
 
 
-async def handle_echo(reader, writer):
-    print('-----')
-    data = await reader.read(100)
-    message = data
-    addr = writer.get_extra_info('peername')
+class Recorder:
+    SERVER_PORT = 8888
+    SERVER_HOST = '0.0.0.0'
+    RECORDER_CLIENT_SOCKET = {}
 
-    print(f"Received {message!r} from {addr!r}")
+    @classmethod
+    async def accept(cls, reader, writer):
+        recorder_client = AsyncSocket(reader=reader, writer=writer)
+        session_id = await recorder_client.read_string_exactly(6)
+        cls.RECORDER_CLIENT_SOCKET[session_id] = recorder_client
+        print(f"RecorderServer accept client {session_id}")
 
-    print(f"Send: {message!r}")
-    writer.write(data)
-    await writer.drain()
+    @classmethod
+    async def _start_server(cls):
+        server = await asyncio.start_server(cls.accept, cls.SERVER_HOST, cls.SERVER_PORT)
+        async with server:
+            await server.serve_forever()
 
-    print("Close the connection")
-    writer.close()
+    @classmethod
+    def start_server(cls):
+        def task(loop):
+            asyncio.set_event_loop(loop)
+            asyncio.run(cls._start_server())
+        new_loop = asyncio.new_event_loop()
+        thread = threading.Thread(target=task, args=(new_loop,))
+        thread.start()
+        print(f"RecorderServer start on {cls.SERVER_HOST}:{cls.SERVER_PORT}")
 
+    @classmethod
+    def get_recorder_socket(cls, session_id):
+        return cls.RECORDER_CLIENT_SOCKET[session_id]
 
-async def main():
-    server = await asyncio.start_server(
-        handle_echo, '0.0.0.0', 8888)
-
-    addr = server.sockets[0].getsockname()
-    print(f'Serving on {addr}')
-
-    async with server:
-        await server.serve_forever()
-
-asyncio.run(main())
+    @classmethod
+    async def del_recorder_socket(cls, session_id):
+        await cls.RECORDER_CLIENT_SOCKET[session_id].disconnect()
+        del cls.RECORDER_CLIENT_SOCKET[session_id]
