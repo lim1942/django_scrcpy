@@ -13,6 +13,7 @@
 #define SC_PACKET_FLAG_CONFIG    (UINT64_C(1) << 63)
 #define SC_PACKET_FLAG_KEY_FRAME (UINT64_C(1) << 62)
 #define SC_PACKET_PTS_MASK (SC_PACKET_FLAG_KEY_FRAME - 1)
+static const AVRational SCRCPY_TIME_BASE = {1, 1000000};
 
 
 // 获取视频音频codec_id
@@ -50,7 +51,7 @@ int create_socket(const char *session_id)
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr =  inet_addr("192.168.8.159");
+	serv_addr.sin_addr.s_addr =  inet_addr("192.168.1.4");
 	serv_addr.sin_port = htons(8888);
     if(connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(struct sockaddr)) == -1){
         fprintf(stderr, "socket Connect failed\n");
@@ -135,6 +136,47 @@ sc_read16be(const uint8_t *buf) {
     return (buf[0] << 8) | buf[1];
 }
 
+struct sc_packet_merger {
+    uint8_t *config;
+    size_t config_size;
+};
+
+void
+sc_packet_merger_init(struct sc_packet_merger *merger) {
+    merger->config = NULL;
+}
+
+void
+sc_packet_merger_destroy(struct sc_packet_merger *merger) {
+    free(merger->config);
+}
+
+bool
+sc_packet_merger_merge(struct sc_packet_merger *merger, AVPacket *packet) {
+    bool is_config = packet->pts == AV_NOPTS_VALUE;
+    if (is_config) {
+        free(merger->config);
+        merger->config = malloc(packet->size);
+        if (!merger->config) {
+            printf("malloc error\n");
+        }
+        memcpy(merger->config, packet->data, packet->size);
+        merger->config_size = packet->size;
+    } else if (merger->config) {
+        size_t config_size = merger->config_size;
+        size_t media_size = packet->size;
+        if (av_grow_packet(packet, config_size)) {
+            printf("av_grow_packet error\n");
+        }
+        memmove(packet->data + config_size, packet->data, media_size);
+        memcpy(packet->data, merger->config, config_size);
+        free(merger->config);
+        merger->config = NULL;
+        // merger->size is meaningless when merger->config is NULL
+    }
+    return true;
+}
+
 
 bool main(int argc, char **argv){
     // 1.创建socket
@@ -152,6 +194,7 @@ bool main(int argc, char **argv){
     printf("record to %s !!! \n", filename);
     avio_open(&format_ctx->pb, filename, AVIO_FLAG_WRITE);
     av_dict_set(&format_ctx->metadata, "comment","Recorded by django_scrcpy", 0);
+
 
     // 4.video_stream
     char meta_buf[4];
@@ -177,7 +220,11 @@ bool main(int argc, char **argv){
     }
 
     // 6.read packet
+    int64_t pts_origin = AV_NOPTS_VALUE;
+    AVPacket *video_pkt_previous = NULL;
     AVPacket *packet = av_packet_alloc();
+    struct sc_packet_merger merger;
+    sc_packet_merger_init(&merger);
     for (;;) {
         // 6.1 read header
         uint8_t header[12];
@@ -187,6 +234,7 @@ bool main(int argc, char **argv){
         }
         uint64_t pts_flags = sc_read64be(header);
         uint32_t len = sc_read32be(&header[8]);
+
         // 6.2 read packet
         av_new_packet(packet, len);
         r = recv(sockfd, packet->data, len, MSG_WAITALL);
@@ -203,39 +251,55 @@ bool main(int argc, char **argv){
             packet->flags |= AV_PKT_FLAG_KEY;
         }
         packet->dts = packet->pts;
-        printf("%ld-----------------\n", packet->pts);
+        sc_packet_merger_merge(&merger, packet);
 
-
+        // 6.3 write header
         if (packet->pts == AV_NOPTS_VALUE){
-            printf("1,\n");
             uint8_t *extradata = av_malloc(packet->size * sizeof(uint8_t));
-            printf("2,\n");
             memcpy(extradata, packet->data, packet->size);
-            printf("3,\n");
             format_ctx->streams[0]->codecpar->extradata = extradata;
-            printf("4,\n");
             format_ctx->streams[0]->codecpar->extradata_size = packet->size;
-            printf("5,\n");
             bool ok = (avformat_write_header(format_ctx, NULL) >= 0);
-            printf("6,\n");
             if (!ok) {
-                printf("Failed to write header to %s", filename);
+                printf("Failed to write header to %s\n", filename);
             }
-
-
         }
+        // 6.4 write packet
+        else{
+            printf("pts: %ld, packet size %d \n", packet->pts, packet->size);
 
+            if (pts_origin == AV_NOPTS_VALUE) {
+                pts_origin = packet->pts;
+            }
+            packet->pts -= pts_origin;
+            packet->dts = packet->pts;
+            if (video_pkt_previous) {
+                // we now know the duration of the previous packet
+                video_pkt_previous->duration = packet->pts- video_pkt_previous->pts;
+                av_packet_rescale_ts(video_pkt_previous, SCRCPY_TIME_BASE, format_ctx->streams[0]->time_base);
+                printf("packet size %d\n", video_pkt_previous->size);
+                bool ok = av_interleaved_write_frame(format_ctx, video_pkt_previous)>=0;
+                if (!ok){
+                    printf("Failed to write packet to %s\n", filename);
+                }
+                av_packet_free(&video_pkt_previous);
 
-
-
-
+            }
+            video_pkt_previous = av_packet_clone(packet);
+        }
         av_packet_unref(packet);
     }
-
+    if (video_pkt_previous){
+        video_pkt_previous->duration = 100000;
+        av_packet_rescale_ts(video_pkt_previous, SCRCPY_TIME_BASE, format_ctx->streams[0]->time_base);
+        av_interleaved_write_frame(format_ctx, video_pkt_previous)>=0;
+    }
     int ret = av_write_trailer(format_ctx);
     if (ret < 0) {
         printf("Failed to write trailer to %s", filename);
     }
+    avio_close(format_ctx->pb);
+    avformat_free_context(format_ctx);
     printf("success!!\n");
     return true;
 }
