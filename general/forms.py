@@ -6,6 +6,7 @@ from general.models import Mobile, LOG_LEVEL_CHOICE, VIDEO_ENCODER_CHOICE, AUDIO
 
 class MobileForm(forms.ModelForm):
     recorder = forms.BooleanField(label="开启录屏", help_text="需要linux部署", required=False)
+    recorder_mkv = forms.BooleanField(label="mkv录屏", help_text="关闭时为mp4录屏", required=False)
     log_level = forms.ChoiceField(label='日志等级', help_text='scrcpy 服务的日志等级', choices=LOG_LEVEL_CHOICE, required=False)
     audio = forms.BooleanField(label="开启声音", help_text="需要提前解锁手机", required=False)
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)

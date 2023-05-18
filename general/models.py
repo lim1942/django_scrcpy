@@ -37,6 +37,7 @@ AUDIO_ENCODER_CHOICE = (
 
 DEFAULT_SCRCPY_KWARGS = {
     "recorder": True,
+    "recorder_mkv": True,
     # 1 scrcpy adb-socket-id, 用于手机区分多个启动的scrcpy。每次运行自动生成
     # "scid": -1,
     # 2. scrcpy日志等级

@@ -179,7 +179,8 @@ class DeviceClient:
 
     async def start_recorder(self):
         if sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None):
-            cmd = f'asset/recorder.out {self.session_id}'
+            record_type = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
+            cmd = f'asset/recorder.out {self.session_id}.{record_type}'
             await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
             for _ in range(200):
                 await asyncio.sleep(0.01)
@@ -195,8 +196,8 @@ class DeviceClient:
         if self.recorder_socket:
             await self.recorder_socket.write(data)
 
-    def stop_recorder(self):
-        self.recorder_tool.del_recorder_socket(self.session_id)
+    async def stop_recorder(self):
+        await self.recorder_tool.del_recorder_socket(self.session_id)
 
     async def start(self):
         # deploy
@@ -226,4 +227,4 @@ class DeviceClient:
         # deploy
         await self.deploy_socket.disconnect()
         await self.cancel_task(self.deploy_task)
-        self.stop_recorder()
+        await self.stop_recorder()

@@ -51,7 +51,7 @@ int create_socket(const char *session_id)
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr =  inet_addr("127.0.0.1");
+	serv_addr.sin_addr.s_addr =  inet_addr("192.168.1.4");
 	serv_addr.sin_port = htons(8888);
     if(connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(struct sockaddr)) == -1){
         fprintf(stderr, "socket Connect failed\n");
@@ -207,17 +207,21 @@ sc_recv_packet(int sockfd, AVPacket *packet){
 
 bool main(int argc, char **argv){
     // 1.创建socket
-    char *session_id  = argv[1];
-    int sockfd = create_socket(session_id);
+    char *filename  = argv[1];
+    int sockfd = create_socket(filename);
 
     // 2.创建封装容器
     av_register_all();
-    const AVOutputFormat *format = find_muxer("matroska");
+    const AVOutputFormat *format;
+    if (strcmp(&filename[33],"mkv") == 0){
+        format = find_muxer("matroska");
+    }else{
+        format = find_muxer("mp4");
+    }
     AVFormatContext *format_ctx = avformat_alloc_context();
     format_ctx->oformat = (AVOutputFormat *) format;
 
     // 3.创建存储文件，写入metadata
-    const char *filename = strncat(session_id,".mkv",4);
     printf("record to %s !!! \n", filename);
     avio_open(&format_ctx->pb, filename, AVIO_FLAG_WRITE);
     av_dict_set(&format_ctx->metadata, "comment","Recorded by django_scrcpy", 0);
