@@ -36,11 +36,9 @@ class RecorderTool:
         return cls.RECORDER_CLIENT_SOCKET[session_id]
 
     @classmethod
-    async def del_recorder_socket(cls, session_id):
-        def task():
-            asyncio.set_event_loop(cls.EVENT_LOOP)
+    def del_recorder_socket(cls, session_id):
+        async def task():
             if session_id in cls.RECORDER_CLIENT_SOCKET:
                 await cls.RECORDER_CLIENT_SOCKET[session_id].disconnect()
                 del cls.RECORDER_CLIENT_SOCKET[session_id]
-        thread = threading.Thread(target=task, )
-        thread.start()
+        asyncio.run_coroutine_threadsafe(task(), cls.EVENT_LOOP)
