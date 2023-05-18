@@ -51,7 +51,7 @@ int create_socket(const char *session_id)
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr =  inet_addr("192.168.1.4");
+	serv_addr.sin_addr.s_addr =  inet_addr("192.168.9.116");
 	serv_addr.sin_port = htons(8888);
     if(connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(struct sockaddr)) == -1){
         fprintf(stderr, "socket Connect failed\n");
@@ -178,6 +178,33 @@ sc_packet_merger_merge(struct sc_packet_merger *merger, AVPacket *packet) {
 }
 
 
+bool
+sc_recv_packet(int sockfd, AVPacket *packet){
+    uint8_t header[12];
+    ssize_t r = recv(sockfd, header, 12, MSG_WAITALL);
+    if (r<12){
+        return false;
+    }
+    uint64_t pts_flags = sc_read64be(header);
+    uint32_t len = sc_read32be(&header[8]);
+    av_new_packet(packet, len);
+    r = recv(sockfd, packet->data, len, MSG_WAITALL);
+    if (r<len){
+        return false;
+    }
+    if (pts_flags & SC_PACKET_FLAG_CONFIG) {
+        packet->pts = AV_NOPTS_VALUE;
+    } else {
+        packet->pts = pts_flags & SC_PACKET_PTS_MASK;
+    }
+    if (pts_flags & SC_PACKET_FLAG_KEY_FRAME) {
+        packet->flags |= AV_PKT_FLAG_KEY;
+    }
+    packet->dts = packet->pts;
+    return true;
+}
+
+
 bool main(int argc, char **argv){
     // 1.创建socket
     char *session_id  = argv[1];
@@ -194,7 +221,6 @@ bool main(int argc, char **argv){
     printf("record to %s !!! \n", filename);
     avio_open(&format_ctx->pb, filename, AVIO_FLAG_WRITE);
     av_dict_set(&format_ctx->metadata, "comment","Recorded by django_scrcpy", 0);
-
 
     // 4.video_stream
     char meta_buf[4];
@@ -214,86 +240,97 @@ bool main(int argc, char **argv){
     recv(sockfd, meta_buf, 4, MSG_WAITALL);
     enum AVCodecID audio_codec_id = sc_demuxer_to_avcodec_id(sc_read32be(meta_buf));
     if (audio_codec_id != AV_CODEC_ID_NONE){
-        // AVCodecContext * audio_codec_ctx = create_audio_codec_ctx(audio_codec_id);
-        // AVStream *audio_stream = avformat_new_stream(format_ctx, audio_codec_ctx->codec);
-        // avcodec_parameters_from_context(audio_stream->codecpar, audio_codec_ctx);
+        AVCodecContext * audio_codec_ctx = create_audio_codec_ctx(audio_codec_id);
+        AVStream *audio_stream = avformat_new_stream(format_ctx, audio_codec_ctx->codec);
+        avcodec_parameters_from_context(audio_stream->codecpar, audio_codec_ctx);
     }
 
-    // 6.read packet
-    int64_t pts_origin = AV_NOPTS_VALUE;
-    AVPacket *video_pkt_previous = NULL;
+    // 6. write_header
     AVPacket *packet = av_packet_alloc();
+    // 6.1 video_header
     struct sc_packet_merger merger;
     sc_packet_merger_init(&merger);
+    sc_recv_packet(sockfd, packet);
+    sc_packet_merger_merge(&merger, packet);
+    uint8_t *extradata = av_malloc(packet->size * sizeof(uint8_t));
+    memcpy(extradata, packet->data, packet->size);
+    format_ctx->streams[0]->codecpar->extradata = extradata;
+    format_ctx->streams[0]->codecpar->extradata_size = packet->size;
+    av_packet_unref(packet);
+    // 6.2 audio_header
+    if (audio_codec_id != AV_CODEC_ID_NONE){
+        sc_recv_packet(sockfd, packet);
+        uint8_t *extradata2 = av_malloc(packet->size * sizeof(uint8_t));
+        memcpy(extradata2, packet->data, packet->size);
+        format_ctx->streams[1]->codecpar->extradata = extradata2;
+        format_ctx->streams[1]->codecpar->extradata_size = packet->size;
+        av_packet_unref(packet);
+    }
+    // 6.3 write_header
+    bool ok = (avformat_write_header(format_ctx, NULL) >= 0);
+    if (!ok) {
+        printf("Failed to write header to %s\n", filename);
+    }
+
+    // 7.read packet
+    int64_t pts_origin = AV_NOPTS_VALUE;
+    AVPacket *video_pkt_previous = NULL;
+    // video or audio
+    bool is_video_packet = false;
     for (;;) {
-        // 6.1 read header
-        uint8_t header[12];
-        ssize_t r = recv(sockfd, header, 12, MSG_WAITALL);
-        if (r<12){
+        // 7.1 read a packet
+        ok = sc_recv_packet(sockfd, packet);
+        if (!ok){
             break;
         }
-        uint64_t pts_flags = sc_read64be(header);
-        uint32_t len = sc_read32be(&header[8]);
 
-        // 6.2 read packet
-        av_new_packet(packet, len);
-        r = recv(sockfd, packet->data, len, MSG_WAITALL);
-        if (r<len){
-            break;
+        // 7.2 process pts
+        if (pts_origin == AV_NOPTS_VALUE) {
+            pts_origin = packet->pts;
         }
-        if (pts_flags & SC_PACKET_FLAG_CONFIG) {
-            packet->pts = AV_NOPTS_VALUE;
-
-        } else {
-            packet->pts = pts_flags & SC_PACKET_PTS_MASK;
-        }
-        if (pts_flags & SC_PACKET_FLAG_KEY_FRAME) {
-            packet->flags |= AV_PKT_FLAG_KEY;
-        }
+        packet->pts -= pts_origin;
         packet->dts = packet->pts;
-        sc_packet_merger_merge(&merger, packet);
 
-        // 6.3 write header
-        if (packet->pts == AV_NOPTS_VALUE){
-            uint8_t *extradata = av_malloc(packet->size * sizeof(uint8_t));
-            memcpy(extradata, packet->data, packet->size);
-            format_ctx->streams[0]->codecpar->extradata = extradata;
-            format_ctx->streams[0]->codecpar->extradata_size = packet->size;
-            bool ok = (avformat_write_header(format_ctx, NULL) >= 0);
-            if (!ok) {
-                printf("Failed to write header to %s\n", filename);
-            }
+        // 7.3 classify packet
+        if (packet->size>=4 & packet->data[0]==0 & packet->data[1]==0 & packet->data[2]==0 & packet->data[3]==1){
+            is_video_packet = true;
+        }else{
+            is_video_packet = false;
         }
-        // 6.4 write packet
-        else{
-            printf("pts: %ld, packet size %d \n", packet->pts, packet->size);
 
-            if (pts_origin == AV_NOPTS_VALUE) {
-                pts_origin = packet->pts;
-            }
-            packet->pts -= pts_origin;
-            packet->dts = packet->pts;
+        // 7.4 write packet
+        if (is_video_packet){
+            packet->stream_index = 0;
+            sc_packet_merger_merge(&merger, packet);
             if (video_pkt_previous) {
-                // we now know the duration of the previous packet
                 video_pkt_previous->duration = packet->pts- video_pkt_previous->pts;
                 av_packet_rescale_ts(video_pkt_previous, SCRCPY_TIME_BASE, format_ctx->streams[0]->time_base);
-                printf("packet size %d\n", video_pkt_previous->size);
-                bool ok = av_interleaved_write_frame(format_ctx, video_pkt_previous)>=0;
+                ok = av_interleaved_write_frame(format_ctx, video_pkt_previous)>=0;
                 if (!ok){
-                    printf("Failed to write packet to %s\n", filename);
+                    printf("Failed to write video packet to %s\n", filename);
                 }
                 av_packet_free(&video_pkt_previous);
-
             }
             video_pkt_previous = av_packet_clone(packet);
+        }else{
+            packet->stream_index = 1;
+            av_packet_rescale_ts(packet, SCRCPY_TIME_BASE, format_ctx->streams[1]->time_base);
+            ok = av_interleaved_write_frame(format_ctx, packet)>=0;
+            if (!ok){
+                printf("Failed to write audio packet to %s\n", filename);
+            }
         }
         av_packet_unref(packet);
     }
+
+    // 7.5 last video packet
     if (video_pkt_previous){
         video_pkt_previous->duration = 100000;
         av_packet_rescale_ts(video_pkt_previous, SCRCPY_TIME_BASE, format_ctx->streams[0]->time_base);
         av_interleaved_write_frame(format_ctx, video_pkt_previous)>=0;
     }
+
+    // 8.close
     int ret = av_write_trailer(format_ctx);
     if (ret < 0) {
         printf("Failed to write trailer to %s", filename);

@@ -1,8 +1,11 @@
 import os
+import uuid
 import json
 import random
 import struct
 import asyncio
+import platform
+
 from bitstring import BitStream
 
 from h26x_extractor.nalutypes import SPS
@@ -35,6 +38,7 @@ class DeviceClient:
             print(f"task await exception {type(e)}, {e}")
 
     def __init__(self, ws_client):
+        self.session_id = uuid.uuid4().hex
         # scrcpy参数
         self.scrcpy_kwargs = json.loads(ws_client.query_params['config'][0])
         # devices
@@ -60,6 +64,7 @@ class DeviceClient:
         self.ws_client = ws_client
         # 录屏相关
         self.recorder_socket = self.recorder.get_recorder_socket('123456')
+        # self.scrcpy_kwargs['audio'] = False
 
     async def recorder_socket_send(self, data):
         if self.recorder_socket:
@@ -119,7 +124,7 @@ class DeviceClient:
         video_info = (await self.video_socket.read_exactly(12))
         accept_video_encode = video_info[:4]
         self.resolution = struct.unpack(">LL", video_info[4:])
-        # 5.send to recorder socket
+        # 5.send meta to recorder
         await self.recorder_socket_send(video_info)
         if self.scrcpy_kwargs['audio']:
             accept_audio_encode = await self.audio_socket.read_exactly(4)
@@ -135,31 +140,17 @@ class DeviceClient:
             print(f"【{self.device_id}】:", data.rstrip('\r\n').rstrip('\n'))
 
     async def _video_task(self):
-        if self.scrcpy_kwargs['send_frame_meta']:
-            while True:
-                try:
-                    # 1.读取frame_meta
-                    frame_meta = await self.video_socket.read_exactly(12)
-                    # 用>大端解析pts(当前帧距离第一帧的微秒数)
-                    # pts = struct.unpack('>Q', frame_meta[:8])[0]
-                    # print(pts, pts/1000000)
-                    data_length = struct.unpack('>L', frame_meta[8:])[0]
-                    current_nal_data = await self.video_socket.read_exactly(data_length)
-                    self.update_resolution(current_nal_data)
-                    # 2.向客户端发送当前nal
-                    await self.ws_client.send(bytes_data=current_nal_data)
-                    await self.recorder_socket_send(frame_meta+current_nal_data)
-                except (asyncio.streams.IncompleteReadError, AttributeError):
-                    break
-        else:
-            while True:
-                try:
-                    data = await self.video_socket.read_until(b'\x00\x00\x00\x01')
-                    current_nal_data = b'\x00\x00\x00\x01' + data.rstrip(b'\x00\x00\x00\x01')
-                    self.update_resolution(current_nal_data)
-                    await self.ws_client.send(bytes_data=current_nal_data)
-                except (asyncio.streams.IncompleteReadError, AttributeError):
-                    break
+        while True:
+            try:
+                # 1.读取frame_meta
+                frame_meta = await self.video_socket.read_exactly(12)
+                data_length = struct.unpack('>L', frame_meta[8:])[0]
+                current_nal_data = await self.video_socket.read_exactly(data_length)
+                # 2.向客户端发送当前nal
+                await self.ws_client.send(bytes_data=current_nal_data)
+                await self.recorder_socket_send(frame_meta+current_nal_data)
+            except (asyncio.streams.IncompleteReadError, AttributeError):
+                break
 
     async def _audio_task(self):
         while True:
@@ -170,15 +161,34 @@ class DeviceClient:
                 current_nal_data = await self.audio_socket.read_exactly(data_length)
                 # 2.向客户端发送当前nal
                 await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
+                await self.recorder_socket_send(frame_meta + current_nal_data)
             except (asyncio.streams.IncompleteReadError, AttributeError):
                 break
+
+    async def handle_config_nal(self):
+        # 1.video_config_packet
+        frame_meta = await self.video_socket.read_exactly(12)
+        data_length = struct.unpack('>L', frame_meta[8:])[0]
+        video_config_nal = await self.video_socket.read_exactly(data_length)
+        self.update_resolution(video_config_nal)
+        await self.ws_client.send(bytes_data=video_config_nal)
+        await self.recorder_socket_send(frame_meta + video_config_nal)
+        # 2.audio_config_packet
+        if self.scrcpy_kwargs['audio']:
+            frame_meta = await self.audio_socket.read_exactly(12)
+            data_length = struct.unpack('>L', frame_meta[8:])[0]
+            audio_config_nal = await self.audio_socket.read_exactly(data_length)
+            await self.ws_client.send(bytes_data=format_audio_data(audio_config_nal))
+            await self.recorder_socket_send(frame_meta + audio_config_nal)
 
     async def start(self):
         # deploy
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
-        # video
+        # init
         await self.create_socket()
+        await self.handle_config_nal()
+        # video
         self.video_task = asyncio.create_task(self._video_task())
         # audio
         if self.scrcpy_kwargs['audio']:

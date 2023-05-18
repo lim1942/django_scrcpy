@@ -23,7 +23,6 @@ class MobileForm(forms.ModelForm):
     power_off_on_close = forms.BooleanField(label='结束熄屏', required=False, help_text='scrcpy结束运行，屏幕熄灭')
     downsize_on_error = forms.BooleanField(label='尺寸适配', required=False, help_text='录屏编码错误，降低录屏尺寸适配')
     power_on = forms.BooleanField(label='开始亮屏', required=False, help_text='scrcpy开始运行，屏幕亮起')
-    send_frame_meta = forms.BooleanField(label='帧元数据', required=False, help_text='发送帧元数据，视频延迟更低')
 
     def get_initial_for_field(self, field, field_name):
         """
