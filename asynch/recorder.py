@@ -3,7 +3,7 @@ import threading
 from asynch.nettool import AsyncSocket
 
 
-class Recorder:
+class RecorderTool:
     SERVER_PORT = 8888
     SERVER_HOST = '0.0.0.0'
     RECORDER_CLIENT_SOCKET = {}
@@ -37,5 +37,6 @@ class Recorder:
 
     @classmethod
     async def del_recorder_socket(cls, session_id):
-        await cls.RECORDER_CLIENT_SOCKET[session_id].disconnect()
-        del cls.RECORDER_CLIENT_SOCKET[session_id]
+        if session_id in cls.RECORDER_CLIENT_SOCKET:
+            await cls.RECORDER_CLIENT_SOCKET[session_id].disconnect()
+            del cls.RECORDER_CLIENT_SOCKET[session_id]

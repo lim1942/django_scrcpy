@@ -1,10 +1,10 @@
 import os
+import sys
 import uuid
 import json
 import random
 import struct
 import asyncio
-import platform
 
 from bitstring import BitStream
 
@@ -12,13 +12,13 @@ from h26x_extractor.nalutypes import SPS
 from asynch.controller import Controller
 from asynch.adb import AsyncAdbDevice
 from asynch.serializers import format_audio_data
-from asynch.recorder import Recorder
+from asynch.recorder import RecorderTool
 
 
 class DeviceClient:
     # 录屏工具
-    recorder = Recorder
-    recorder.start_server()
+    recorder_tool = RecorderTool
+    recorder_tool.start_server()
     # socket超时时间,毫秒
     connect_timeout = 300
 
@@ -63,12 +63,7 @@ class DeviceClient:
         # 需要推流的ws_client
         self.ws_client = ws_client
         # 录屏相关
-        self.recorder_socket = self.recorder.get_recorder_socket('123456')
-        # self.scrcpy_kwargs['audio'] = False
-
-    async def recorder_socket_send(self, data):
-        if self.recorder_socket:
-            await self.recorder_socket.write(data)
+        self.recorder_socket = None
 
     def update_resolution(self, current_nal_data):
         # when read a sps frame, change origin resolution
@@ -125,12 +120,12 @@ class DeviceClient:
         accept_video_encode = video_info[:4]
         self.resolution = struct.unpack(">LL", video_info[4:])
         # 5.send meta to recorder
-        await self.recorder_socket_send(video_info)
+        await self.send_to_recorder(video_info)
         if self.scrcpy_kwargs['audio']:
             accept_audio_encode = await self.audio_socket.read_exactly(4)
-            await self.recorder_socket_send(accept_audio_encode)
+            await self.send_to_recorder(accept_audio_encode)
         else:
-            await self.recorder_socket_send(struct.pack(">L", 0))
+            await self.send_to_recorder(struct.pack(">L", 0))
 
     async def _deploy_task(self):
         while True:
@@ -146,9 +141,10 @@ class DeviceClient:
                 frame_meta = await self.video_socket.read_exactly(12)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.video_socket.read_exactly(data_length)
+                self.update_resolution(current_nal_data)
                 # 2.向客户端发送当前nal
                 await self.ws_client.send(bytes_data=current_nal_data)
-                await self.recorder_socket_send(frame_meta+current_nal_data)
+                await self.send_to_recorder(frame_meta+current_nal_data)
             except (asyncio.streams.IncompleteReadError, AttributeError):
                 break
 
@@ -161,7 +157,7 @@ class DeviceClient:
                 current_nal_data = await self.audio_socket.read_exactly(data_length)
                 # 2.向客户端发送当前nal
                 await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
-                await self.recorder_socket_send(frame_meta + current_nal_data)
+                await self.send_to_recorder(frame_meta + current_nal_data)
             except (asyncio.streams.IncompleteReadError, AttributeError):
                 break
 
@@ -172,17 +168,37 @@ class DeviceClient:
         video_config_nal = await self.video_socket.read_exactly(data_length)
         self.update_resolution(video_config_nal)
         await self.ws_client.send(bytes_data=video_config_nal)
-        await self.recorder_socket_send(frame_meta + video_config_nal)
+        await self.send_to_recorder(frame_meta + video_config_nal)
         # 2.audio_config_packet
         if self.scrcpy_kwargs['audio']:
             frame_meta = await self.audio_socket.read_exactly(12)
             data_length = struct.unpack('>L', frame_meta[8:])[0]
             audio_config_nal = await self.audio_socket.read_exactly(data_length)
             await self.ws_client.send(bytes_data=format_audio_data(audio_config_nal))
-            await self.recorder_socket_send(frame_meta + audio_config_nal)
+            await self.send_to_recorder(frame_meta + audio_config_nal)
+
+    def start_recorder(self):
+        if sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None):
+            cmd = f'asset/recorder.out {self.session_id}'
+            await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            for _ in range(200):
+                await asyncio.sleep(0.01)
+                if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
+                    self.recorder_socket = self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
+                    break
+            else:
+                print(f"{self.device_id} error in get recorder_socket")
+
+    async def send_to_recorder(self, data):
+        if self.recorder_socket:
+            await self.recorder_socket.write(data)
+
+    def stop_recorder(self):
+        self.recorder_tool.del_recorder_socket(self.session_id)
 
     async def start(self):
         # deploy
+        self.start_recorder()
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
         # init
@@ -208,3 +224,4 @@ class DeviceClient:
         # deploy
         await self.deploy_socket.disconnect()
         await self.cancel_task(self.deploy_task)
+        self.stop_recorder()

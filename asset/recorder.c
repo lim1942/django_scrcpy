@@ -51,7 +51,7 @@ int create_socket(const char *session_id)
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr =  inet_addr("192.168.9.116");
+	serv_addr.sin_addr.s_addr =  inet_addr("127.0.0.1");
 	serv_addr.sin_port = htons(8888);
     if(connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(struct sockaddr)) == -1){
         fprintf(stderr, "socket Connect failed\n");
@@ -212,12 +212,12 @@ bool main(int argc, char **argv){
 
     // 2.创建封装容器
     av_register_all();
-    const AVOutputFormat *format = find_muxer("mp4");
+    const AVOutputFormat *format = find_muxer("matroska");
     AVFormatContext *format_ctx = avformat_alloc_context();
     format_ctx->oformat = (AVOutputFormat *) format;
 
     // 3.创建存储文件，写入metadata
-    const char *filename = strncat(session_id,".mp4",4);
+    const char *filename = strncat(session_id,".mkv",4);
     printf("record to %s !!! \n", filename);
     avio_open(&format_ctx->pb, filename, AVIO_FLAG_WRITE);
     av_dict_set(&format_ctx->metadata, "comment","Recorded by django_scrcpy", 0);
@@ -284,19 +284,26 @@ bool main(int argc, char **argv){
             break;
         }
 
-        // 7.2 process pts
-        if (pts_origin == AV_NOPTS_VALUE) {
-            pts_origin = packet->pts;
-        }
-        packet->pts -= pts_origin;
-        packet->dts = packet->pts;
-
-        // 7.3 classify packet
+        // 7.2 classify packet
         if (packet->size>=4 & packet->data[0]==0 & packet->data[1]==0 & packet->data[2]==0 & packet->data[3]==1){
             is_video_packet = true;
         }else{
             is_video_packet = false;
         }
+        if(packet->pts == AV_NOPTS_VALUE){
+            if (is_video_packet){
+                sc_packet_merger_merge(&merger, packet);
+            }
+            av_packet_unref(packet);
+            continue;
+        }
+
+        // 7.3 process pts
+        if (pts_origin == AV_NOPTS_VALUE) {
+            pts_origin = packet->pts;
+        }
+        packet->pts -= pts_origin;
+        packet->dts = packet->pts;
 
         // 7.4 write packet
         if (is_video_packet){
