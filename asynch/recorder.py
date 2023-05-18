@@ -38,5 +38,9 @@ class RecorderTool:
     @classmethod
     async def del_recorder_socket(cls, session_id):
         if session_id in cls.RECORDER_CLIENT_SOCKET:
-            await cls.RECORDER_CLIENT_SOCKET[session_id].disconnect()
+            cls.RECORDER_CLIENT_SOCKET[session_id].writer.write_eof()
+            await cls.RECORDER_CLIENT_SOCKET[session_id].writer.drain()
             del cls.RECORDER_CLIENT_SOCKET[session_id]
+
+
+
