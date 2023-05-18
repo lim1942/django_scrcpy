@@ -185,8 +185,8 @@ class DeviceClient:
                 await asyncio.sleep(0.01)
                 if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
                     self.recorder_socket = self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
+                    print(f"{self.device_id}:{self.session_id} success get recorder_socket")
                     break
-                print(f"{self.device_id}:{self.session_id} success get recorder_socket")
 
             else:
                 print(f"{self.device_id}:{self.session_id} error in get recorder_socket")
@@ -195,8 +195,8 @@ class DeviceClient:
         if self.recorder_socket:
             await self.recorder_socket.write(data)
 
-    async def stop_recorder(self):
-        await self.recorder_tool.del_recorder_socket(self.session_id)
+    def stop_recorder(self):
+        self.recorder_tool.del_recorder_socket(self.session_id)
 
     async def start(self):
         # deploy
@@ -226,4 +226,4 @@ class DeviceClient:
         # deploy
         await self.deploy_socket.disconnect()
         await self.cancel_task(self.deploy_task)
-        await self.stop_recorder()
+        self.stop_recorder()
