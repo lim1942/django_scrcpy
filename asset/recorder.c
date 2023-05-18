@@ -51,7 +51,7 @@ int create_socket(const char *session_id)
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr =  inet_addr("192.168.1.4");
+	serv_addr.sin_addr.s_addr =  inet_addr("127.0.0.1");
 	serv_addr.sin_port = htons(8888);
     if(connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(struct sockaddr)) == -1){
         fprintf(stderr, "socket Connect failed\n");
