@@ -7,11 +7,12 @@ class RecorderTool:
     SERVER_PORT = 8888
     SERVER_HOST = '0.0.0.0'
     RECORDER_CLIENT_SOCKET = {}
+    EVENT_LOOP = asyncio.new_event_loop()
 
     @classmethod
     async def accept(cls, reader, writer):
         recorder_client = AsyncSocket(reader=reader, writer=writer)
-        session_id = await recorder_client.read_string_exactly(6)
+        session_id = await recorder_client.read_string_exactly(32)
         cls.RECORDER_CLIENT_SOCKET[session_id] = recorder_client
         print(f"RecorderServer accept client {session_id}")
 
@@ -23,11 +24,10 @@ class RecorderTool:
 
     @classmethod
     def start_server(cls):
-        def task(loop):
-            asyncio.set_event_loop(loop)
+        def task():
+            asyncio.set_event_loop(cls.EVENT_LOOP)
             asyncio.run(cls._start_server())
-        new_loop = asyncio.new_event_loop()
-        thread = threading.Thread(target=task, args=(new_loop,))
+        thread = threading.Thread(target=task, )
         thread.start()
         print(f"RecorderServer start on {cls.SERVER_HOST}:{cls.SERVER_PORT}")
 
@@ -37,6 +37,10 @@ class RecorderTool:
 
     @classmethod
     async def del_recorder_socket(cls, session_id):
-        if session_id in cls.RECORDER_CLIENT_SOCKET:
-            await cls.RECORDER_CLIENT_SOCKET[session_id].disconnect()
-            del cls.RECORDER_CLIENT_SOCKET[session_id]
+        def task():
+            asyncio.set_event_loop(cls.EVENT_LOOP)
+            if session_id in cls.RECORDER_CLIENT_SOCKET:
+                await cls.RECORDER_CLIENT_SOCKET[session_id].disconnect()
+                del cls.RECORDER_CLIENT_SOCKET[session_id]
+        thread = threading.Thread(target=task, )
+        thread.start()

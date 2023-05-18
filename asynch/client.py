@@ -177,7 +177,7 @@ class DeviceClient:
             await self.ws_client.send(bytes_data=format_audio_data(audio_config_nal))
             await self.send_to_recorder(frame_meta + audio_config_nal)
 
-    def start_recorder(self):
+    async def start_recorder(self):
         if sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None):
             cmd = f'asset/recorder.out {self.session_id}'
             await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
@@ -186,19 +186,21 @@ class DeviceClient:
                 if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
                     self.recorder_socket = self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
                     break
+                print(f"{self.device_id}:{self.session_id} success get recorder_socket")
+
             else:
-                print(f"{self.device_id} error in get recorder_socket")
+                print(f"{self.device_id}:{self.session_id} error in get recorder_socket")
 
     async def send_to_recorder(self, data):
         if self.recorder_socket:
             await self.recorder_socket.write(data)
 
-    def stop_recorder(self):
-        self.recorder_tool.del_recorder_socket(self.session_id)
+    async def stop_recorder(self):
+        await self.recorder_tool.del_recorder_socket(self.session_id)
 
     async def start(self):
         # deploy
-        self.start_recorder()
+        await self.start_recorder()
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
         # init
@@ -224,4 +226,4 @@ class DeviceClient:
         # deploy
         await self.deploy_socket.disconnect()
         await self.cancel_task(self.deploy_task)
-        self.stop_recorder()
+        await self.stop_recorder()
