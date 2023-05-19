@@ -77,10 +77,7 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     show_full_result_count = True
     search_fields = ['device_id']
     list_filter = ['device_id', 'format', 'start_time', 'finish_time']
-    list_display = ['video_id', 'device_id', 'format', 'duration', 'size_kb', 'download', 'video_play', 'start_time', 'finish_time']
-    
-    def has_change_permission(self, request, obj=None):
-        return False
+    list_display = ['video_id', 'device_id', 'name', 'format', 'duration', 'size_kb', 'download', 'video_play', 'start_time', 'finish_time']
     
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         for obj in queryset:
@@ -114,13 +111,7 @@ class PictureAdmin(ExportActionMixin, admin.ModelAdmin):
     show_full_result_count = True
     search_fields = ['device_id']
     list_filter = ['device_id', 'created_time']
-    list_display = ['img', 'device_id', 'download','created_time']
-
-    def has_add_permission(self, request: HttpRequest) -> bool:
-        return False
-    
-    def has_change_permission(self, request: HttpRequest, obj=None ) -> bool:
-        return False
+    list_display = ['img', 'name', 'device_id', 'download', 'created_time']
 
     def download(self, obj):
         download_url = obj.picture.url
