@@ -209,11 +209,15 @@ bool main(int argc, char **argv){
     // 1.创建socket
     char *host = "127.0.0.1";
     int port = 45678;
+    char *filepath;
     char *filename  = argv[1];
     if (argc>=3){
         host = argv[2];
         if (argc>=4){
             port = atoi(argv[3]);
+            if (argc>=5){
+                filepath = argv[4];
+            }
         }
     }
     int sockfd = create_socket(filename, host, port);
@@ -230,8 +234,10 @@ bool main(int argc, char **argv){
     format_ctx->oformat = (AVOutputFormat *) format;
 
     // 3.创建存储文件，写入metadata
-    printf("record to %s !!! \n", filename);
-    avio_open(&format_ctx->pb, filename, AVIO_FLAG_WRITE);
+    char *full_filename = (char *) malloc(strlen(filepath) + strlen(filename));
+    sprintf(full_filename, "%s%s", filepath, filename);
+    printf("record to %s !!! \n", full_filename);
+    avio_open(&format_ctx->pb, full_filename, AVIO_FLAG_WRITE);
     av_dict_set(&format_ctx->metadata, "comment","Recorded by django_scrcpy", 0);
 
     // 4.video_stream

@@ -52,6 +52,8 @@ class MobileForm(forms.ModelForm):
             config_dict['audio_codec'] = 'raw'
         else:
             config_dict['audio_codec'] = 'opus'
+        if (not config_dict['recorder_mkv']) and (config_dict['audio_codec']=='opus'):
+            raise forms.ValidationError("mp4 cant use opus audio_codec !!!")
         # restore config_dict to config str
         self.cleaned_data['config'] = json.dumps(config_dict)
         return self.cleaned_data

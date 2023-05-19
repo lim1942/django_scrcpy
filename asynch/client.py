@@ -5,14 +5,17 @@ import json
 import random
 import struct
 import asyncio
+import datetime
 
 from bitstring import BitStream
-
 from h26x_extractor.nalutypes import SPS
+from channels.db import database_sync_to_async
+
 from asynch.controller import Controller
 from asynch.adb import AsyncAdbDevice
 from asynch.serializers import format_audio_data
 from asynch.recorder import RecorderTool
+from django_scrcpy.settings import MEDIA_ROOT
 
 
 class DeviceClient:
@@ -64,6 +67,9 @@ class DeviceClient:
         self.ws_client = ws_client
         # 录屏相关
         self.recorder_socket = None
+        self.recorder_format = None
+        self.recorder_start_time = None
+        self.recorder_finish_time = None
 
     def update_resolution(self, current_nal_data):
         # when read a sps frame, change origin resolution
@@ -180,8 +186,8 @@ class DeviceClient:
 
     async def start_recorder(self):
         if sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None):
-            record_type = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
-            cmd = f'asset/recorder.out {self.session_id}.{record_type} 127.0.0.1 45678'
+            self.recorder_format = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
+            cmd = f'asset/recorder.out {self.session_id}.{self.recorder_format} 127.0.0.1 45678 media/video/'
             await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
             for _ in range(200):
                 await asyncio.sleep(0.01)
@@ -198,7 +204,20 @@ class DeviceClient:
             await self.recorder_socket.write(data)
 
     async def stop_recorder(self):
-        await self.recorder_tool.del_recorder_socket(self.session_id)
+        if self.recorder_socket:
+            from general.models import Video
+            await self.recorder_tool.del_recorder_socket(self.session_id)
+            data = dict(
+                video_id=self.session_id,
+                device_id=self.device_id,
+                format=self.recorder_format,
+                duration=(self.recorder_finish_time-self.recorder_start_time).seconds,
+                size=os.path.getsize(os.path.join(MEDIA_ROOT, 'video', f"{self.session_id}.{self.recorder_format}")),
+                start_time=self.recorder_start_time,
+                finish_time=self.recorder_finish_time,
+                config=json.dumps(self.scrcpy_kwargs)
+            )
+            await database_sync_to_async(Video.objects.create)(**data)
 
     async def start(self):
         # 开始录屏
@@ -208,6 +227,7 @@ class DeviceClient:
         self.deploy_task = asyncio.create_task(self._deploy_task())
         # init
         await self.create_socket()
+        self.recorder_start_time = datetime.datetime.now()
         await self.handle_config_nal()
         # video
         self.video_task = asyncio.create_task(self._video_task())
@@ -217,6 +237,7 @@ class DeviceClient:
 
     async def stop(self):
         # video
+        self.recorder_finish_time = datetime.datetime.now()
         await self.video_socket.disconnect()
         await self.cancel_task(self.video_task)
         # audio

@@ -136,3 +136,4 @@ nohup.out
 *.mp4
 *.mkv
 *.out
+/.vscode

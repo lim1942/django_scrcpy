@@ -295,11 +295,17 @@
   }
 
   // 处理截图
+  var xhr = new XMLHttpRequest();
+  windows.xhr = xhr;
   function button_handle_capture(){
       var ele = document.getElementById('capture')
       ele.href = window.video_renderer_canvas.toDataURL()
       ele.download = window.device_id + '_' + (new Date().formatCode()) + '.png'
       ele.click()
+      xhr.open('POST', '/api/v1/general/picture/upload_base64/', true)
+      xhr.setRequestHeader('content-type', 'application/json');
+      xhr.withCredentials = true;
+      xhr.send(JSON.stringify({'img':ele.href, "device_id": window.device_id}))
   }
 
   // 处理同时按2个键

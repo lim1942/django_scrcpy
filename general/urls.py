@@ -4,6 +4,8 @@ from general import views
 
 router = DefaultRouter()
 router.register('mobile', views.MobileModelViewSet)
+router.register('video', views.VideoModelViewSet)
+router.register('picture', views.PictureModelViewSet)
 
 urlpatterns = [
     path('', include(router.urls)),
