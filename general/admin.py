@@ -102,7 +102,8 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
 
     def download(self, obj):
         download_url = f'/media/video/{obj.video_id}.{obj.format}'
-        return mark_safe(f'<a href="{download_url}" target="_blank">访问</a>')
+        download_name = f'{obj.video_id}.{obj.format}'
+        return mark_safe(f'<a href="{download_url}" target="_blank" download="{download_name}">访问</a>')
     download.short_description = '下载'
 
     def video_play(self, obj):
