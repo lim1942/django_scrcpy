@@ -296,7 +296,6 @@
 
   // 处理截图
   var xhr = new XMLHttpRequest();
-  windows.xhr = xhr;
   function button_handle_capture(){
       var ele = document.getElementById('capture')
       ele.href = window.video_renderer_canvas.toDataURL()
