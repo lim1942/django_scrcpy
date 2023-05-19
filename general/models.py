@@ -47,7 +47,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 4 音频编码类型
     "video_codec": "h264",
     # 5 音频编码类型
-    "audio_codec": "opus",
+    "audio_codec": "aac",
     # 6 画面最大尺寸
     "max_size": 720,
     # 7 视频比特率
