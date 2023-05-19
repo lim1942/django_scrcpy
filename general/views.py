@@ -1,23 +1,27 @@
+import re
 import pytz
 import base64
 import os.path
 import datetime
+import mimetypes
+from wsgiref.util import FileWrapper
+
+from django.urls import reverse
 from django.shortcuts import render
-from rest_framework.decorators import action
-from rest_framework.response import Response
 from django.http import StreamingHttpResponse
 from django.core.files.base import ContentFile
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.viewsets import ReadOnlyModelViewSet, ModelViewSet
 from rest_framework.authentication import SessionAuthentication, BasicAuthentication
 
-
+from general import adb
 from general import models
 from general import pagination
 from general import serializers
 from general import permissions
-from general import adb
-from django_scrcpy.settings import TIME_ZONE
+from django_scrcpy.settings import TIME_ZONE, MEDIA_ROOT
 
 
 class MobileModelViewSet(ReadOnlyModelViewSet):
@@ -138,17 +142,59 @@ class VideoModelViewSet(ModelViewSet):
     queryset = models.Video.objects.all()
     serializer_class = serializers.VideoModelSerializer
 
+    @classmethod
+    def file_iterator(cls, file_name, chunk_size=8192, offset=0, length=None):
+        with open(file_name, "rb") as f:
+            f.seek(offset, os.SEEK_SET)
+            remaining = length
+            while True:
+                bytes_length = chunk_size if remaining is None else min(remaining, chunk_size)
+                data = f.read(bytes_length)
+                if not data:
+                    break
+                if remaining:
+                    remaining -= len(data)
+                yield data
+
+    @action(methods=['get'], detail=True, url_path='stream')
+    def stream(self, request, *args, **kwargs):
+        obj = self.get_object()
+        video_path = os.path.join(MEDIA_ROOT, "video", f"{obj.video_id}.{obj.format}")
+        range_header = request._request.META.get('HTTP_RANGE', '').strip()
+        range_re = re.compile(r'bytes\s*=\s*(\d+)\s*-\s*(\d*)', re.I)
+        range_match = range_re.match(range_header)
+        size = os.path.getsize(video_path)
+        content_type, encoding = mimetypes.guess_type(video_path)
+        content_type = content_type or 'application/octet-stream'
+        if range_match:
+            first_byte, last_byte = range_match.groups()
+            first_byte = int(first_byte) if first_byte else 0
+            last_byte = first_byte + 1024 * 1024 * 4  # 8M 每片,响应体最大体积
+            if last_byte >= size:
+                last_byte = size - 1
+            length = last_byte - first_byte + 1
+            resp = StreamingHttpResponse(self.file_iterator(video_path, offset=first_byte, length=length), status=206, content_type=content_type)
+            resp['Content-Length'] = str(length)
+            resp['Content-Range'] = 'bytes %s-%s/%s' % (first_byte, last_byte, size)
+        else:
+            resp = StreamingHttpResponse(FileWrapper(open(video_path, 'rb')), content_type=content_type)
+            resp['Content-Length'] = str(size)
+        resp['Accept-Ranges'] = 'bytes'
+        return resp
+
     @action(methods=['get'], detail=True, url_path='play')
     def play(self, request, *args, **kwargs):
         obj = self.get_object()
-        kwargs = {"filename": f"{obj.video_id}.{obj.format}", "play_url": f"/media/video/{obj.video_id}.{obj.format}"}
+        play_url = reverse("video-stream", kwargs={"video_id": obj.video_id, "version": "v1"})
+        kwargs = {"filename": f"{obj.video_id}.{obj.format}", "play_url": play_url}
         return render(request, "general/video_play.html", kwargs)
-    
+
 
 class CsrfExemptSessionAuthentication(SessionAuthentication):
     def enforce_csrf(self, request):
-        return 
-    
+        return
+
+
 class PictureModelViewSet(ModelViewSet):
     queryset = models.Picture.objects.all()
     serializer_class = serializers.PictureModelSerializer

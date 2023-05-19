@@ -37,7 +37,7 @@ AUDIO_ENCODER_CHOICE = (
 
 DEFAULT_SCRCPY_KWARGS = {
     "recorder": True,
-    "recorder_mkv": True,
+    "recorder_mkv": False,
     # 1 scrcpy adb-socket-id, 用于手机区分多个启动的scrcpy。每次运行自动生成
     # "scid": -1,
     # 2. scrcpy日志等级
@@ -77,7 +77,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 19 视频具体编码
     "video_encoder": "OMX.google.h264.encoder",
     # 20 音频具体编码
-    "audio_encoder": "c2.android.opus.encoder",
+    "audio_encoder": "OMX.google.aac.encoder",
     # 21 scrcpy解锁设备锁屏
     "power_off_on_close": False,
     # 22 clipboard_autosync为True，在有选择文本才同步剪切板，False为随时获取剪切板

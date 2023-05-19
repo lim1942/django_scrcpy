@@ -82,6 +82,8 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     def get_readonly_fields(self, request, obj=None):
         if obj:
             return ['video_id', 'device_id', 'format', 'start_time', 'finish_time', 'config', 'duration']
+        else:
+            return []
 
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         for obj in queryset:
