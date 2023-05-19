@@ -133,4 +133,6 @@ dataset/
 .zip
 nohup.out
 /staticfiles/
-asset/recorder.out
+.mp4
+.mkv
+.out
