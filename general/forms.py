@@ -5,6 +5,8 @@ from general.models import Mobile, LOG_LEVEL_CHOICE, VIDEO_ENCODER_CHOICE, AUDIO
 
 
 class MobileForm(forms.ModelForm):
+    recorder = forms.BooleanField(label="开启录屏", help_text="需要linux部署", required=False)
+    recorder_mkv = forms.BooleanField(label="mkv录屏", help_text="关闭时为mp4录屏", required=False)
     log_level = forms.ChoiceField(label='日志等级', help_text='scrcpy 服务的日志等级', choices=LOG_LEVEL_CHOICE, required=False)
     audio = forms.BooleanField(label="开启声音", help_text="需要提前解锁手机", required=False)
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)
@@ -23,7 +25,6 @@ class MobileForm(forms.ModelForm):
     power_off_on_close = forms.BooleanField(label='结束熄屏', required=False, help_text='scrcpy结束运行，屏幕熄灭')
     downsize_on_error = forms.BooleanField(label='尺寸适配', required=False, help_text='录屏编码错误，降低录屏尺寸适配')
     power_on = forms.BooleanField(label='开始亮屏', required=False, help_text='scrcpy开始运行，屏幕亮起')
-    send_frame_meta = forms.BooleanField(label='帧元数据', required=False, help_text='发送帧元数据，视频延迟更低')
 
     def get_initial_for_field(self, field, field_name):
         """
@@ -51,6 +52,8 @@ class MobileForm(forms.ModelForm):
             config_dict['audio_codec'] = 'raw'
         else:
             config_dict['audio_codec'] = 'opus'
+        if (config_dict['recorder']) and (not config_dict['recorder_mkv']) and (config_dict['audio_codec']!='aac'):
+            raise forms.ValidationError("recording: mp4 audio_codec only support aac!!!")
         # restore config_dict to config str
         self.cleaned_data['config'] = json.dumps(config_dict)
         return self.cleaned_data

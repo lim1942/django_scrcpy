@@ -133,3 +133,7 @@ dataset/
 .zip
 nohup.out
 /staticfiles/
+*.mp4
+*.mkv
+*.out
+/.vscode

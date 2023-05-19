@@ -77,6 +77,7 @@
         msg = {
           msg_type: 2,
           action: action,
+          resolution: window.canvas_resolution,
           x: pix_data[0],
           y: pix_data[1],
         }
@@ -89,6 +90,7 @@
           msg_type: 3,
           x: pix_data[0],
           y: pix_data[1],
+          resolution: window.canvas_resolution,
           distance_x: pix_data[2],
           distance_y: pix_data[3],
         }
@@ -140,6 +142,7 @@
             msg_type: 30,
             x: pix_data[0],
             y: pix_data[1],
+            resolution: window.canvas_resolution,
             end_x: pix_data[2],
             end_y: pix_data[3],
             unit: unit,
@@ -147,6 +150,15 @@
           }
           ws.send(JSON.stringify(msg))
         }
+      }
+
+      // 999.update_resolution
+      function update_resolution(){
+        msg = {
+          msg_type: 999,
+          resolution: window.canvas_resolution,
+        }
+        ws.send(JSON.stringify(msg))
       }
 </script>
 <script>
@@ -295,11 +307,16 @@
   }
 
   // 处理截图
+  var xhr = new XMLHttpRequest();
   function button_handle_capture(){
       var ele = document.getElementById('capture')
       ele.href = window.video_renderer_canvas.toDataURL()
       ele.download = window.device_id + '_' + (new Date().formatCode()) + '.png'
       ele.click()
+      xhr.open('POST', '/api/v1/general/picture/upload_base64/', true)
+      xhr.setRequestHeader('content-type', 'application/json');
+      xhr.withCredentials = true;
+      xhr.send(JSON.stringify({'img':ele.href, "device_id": window.device_id}))
   }
 
   // 处理同时按2个键
@@ -395,7 +412,7 @@
           window.audio_player = new PCMPlayer({encoding: '16bitInt', channels: 2, sampleRate: 48000, flushingTime: 70 });
           window.audio_player_feed = function(data){
             window.audio_player.feed(data)
-          }
+          };
         }
         // 2.2 opus audio
         else if (window.query_param_dict['audio_codec'] == 'opus'){
@@ -497,9 +514,17 @@
   }
 
   function load_video_player(){
+    window.canvas_resolution = [0, 0];
     if (document.getElementById('video_play_select').value=='broardway'){
       window.video_player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
-      window.video_player_feed = function(data){window.video_player.decode(data)}
+      window.video_player_feed = function(data){
+        if (data[4]==103){
+          const { profileIndex, constraintSet, levelIndex, croppedWidth, croppedHeight,} = window.h264ParseConfiguration(data);
+          window.canvas_resolution = [croppedWidth, croppedHeight];
+          update_resolution();
+        }
+        window.video_player.decode(data);
+      }
       attach_canvas(window.video_player.canvas)
     }
     else{
@@ -511,6 +536,8 @@
         window.video_player_feed = function(data){
           if (data[4]==103){
             const { profileIndex, constraintSet, levelIndex, croppedWidth, croppedHeight,} = window.h264ParseConfiguration(data);
+            window.canvas_resolution = [croppedWidth, croppedHeight];
+            update_resolution();
             const codec = `avc1.${[profileIndex, constraintSet, levelIndex].map(toHex).join("")}`
             window.video_decoder.configure({ codec: codec, optimizeForLatency: true })
             video_renderer_canvas = document.createElement("canvas")
@@ -541,6 +568,8 @@
               croppedWidth,
               croppedHeight,
             } = window.h265ParseConfiguration(data);
+            window.canvas_resolution = [croppedWidth, croppedHeight];
+            update_resolution();
             const codec = [ "hev1",
               ["", "A", "B", "C"][generalProfileSpace] +
                   generalProfileIndex.toString(),

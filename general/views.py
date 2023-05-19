@@ -1,12 +1,16 @@
 import pytz
-import datetime
+import base64
 import os.path
+import datetime
 from django.shortcuts import render
-from django.http import StreamingHttpResponse
 from rest_framework.decorators import action
-from rest_framework.viewsets import ReadOnlyModelViewSet
-from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.response import Response
+from django.http import StreamingHttpResponse
+from django.core.files.base import ContentFile
+from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.viewsets import ReadOnlyModelViewSet, ModelViewSet
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+
 
 from general import models
 from general import pagination
@@ -127,3 +131,32 @@ class MobileModelViewSet(ReadOnlyModelViewSet):
         adb_device = adb.AdbDevice(kwargs['device_id'])
         success, error = adb_device.filemanager_change_permissions(request.data['items'], request.data['permsCode'], recursive=request.data['recursive'])
         return Response({"result": {"success": success, "error": error}})
+
+
+class VideoModelViewSet(ModelViewSet):
+    lookup_field = 'video_id'
+    queryset = models.Video.objects.all()
+    serializer_class = serializers.VideoModelSerializer
+
+    @action(methods=['get'], detail=True, url_path='play')
+    def play(self, request, *args, **kwargs):
+        obj = self.get_object()
+        kwargs = {"filename": f"{obj.video_id}.{obj.format}", "play_url": f"/media/video/{obj.video_id}.{obj.format}"}
+        return render(request, "general/video_play.html", kwargs)
+    
+
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return 
+    
+class PictureModelViewSet(ModelViewSet):
+    queryset = models.Picture.objects.all()
+    serializer_class = serializers.PictureModelSerializer
+    authentication_classes = (BasicAuthentication, CsrfExemptSessionAuthentication)
+
+    @action(methods=['post'], detail=False, url_path='upload_base64')
+    def upload_base64(self, request, *args, **kwargs):
+        base64_data = base64.b64decode(request.data['img'].split('data:image/png;base64,')[-1])
+        picture = ContentFile(base64_data, name=request.data['device_id']+'.jpg')
+        models.Picture.objects.create(device_id=request.data['device_id'], picture=picture)
+        return Response("{\"status\":\"true\"}")

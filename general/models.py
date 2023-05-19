@@ -36,6 +36,8 @@ AUDIO_ENCODER_CHOICE = (
 )
 
 DEFAULT_SCRCPY_KWARGS = {
+    "recorder": True,
+    "recorder_mkv": True,
     # 1 scrcpy adb-socket-id, 用于手机区分多个启动的scrcpy。每次运行自动生成
     # "scid": -1,
     # 2. scrcpy日志等级
@@ -118,3 +120,40 @@ class Mobile(models.Model):
     class Meta:
         verbose_name_plural = verbose_name = '手机'
         ordering = ('updated_time', 'created_time')
+
+
+class Video(models.Model):
+    video_id = models.CharField("video_id", max_length=127, unique=True, null=False, blank=False, db_index=True)
+    device_id = models.CharField("device_id", max_length=127, null=False, blank=False, db_index=True)
+    format = models.CharField('文件格式', max_length=32, null=False, blank=False, db_index=True)
+    duration = models.IntegerField("视频时长(秒)", null=False, blank=False)
+    size = models.IntegerField('视频大小(KB)', null=False, blank=False)
+    start_time = models.DateTimeField("开始时间", db_index=True)
+    finish_time = models.DateTimeField("结束时间", db_index=True)
+    config = models.TextField("配置详情", default=json.dumps(DEFAULT_SCRCPY_KWARGS), help_text='配置视频分辨率，帧率等')
+    updated_time = models.DateTimeField("更新时间", auto_now=True, db_index=True)
+    name = models.CharField('名称', max_length=32, blank=True, null=False)
+    details = models.TextField("备注信息", blank=True)
+
+    def __str__(self):
+        return self.video_id
+    
+    class Meta:
+        verbose_name_plural = verbose_name = '录屏'
+        ordering = ('-finish_time',)
+
+
+class Picture(models.Model):
+    device_id = models.CharField("device_id", max_length=127, null=False, blank=False, db_index=True)
+    picture = models.ImageField("截图", upload_to='picture')
+    name = models.CharField('名称', max_length=32, blank=True, null=False)
+    details = models.TextField("备注信息", blank=True)
+    updated_time = models.DateTimeField("更新时间", auto_now=True, db_index=True)
+    created_time = models.DateTimeField("创建时间", auto_now_add=True, db_index=True)
+
+    def __str__(self):
+        return self.device_id
+    
+    class Meta:
+        verbose_name_plural = verbose_name = '截图'
+        ordering = ('-created_time',)
