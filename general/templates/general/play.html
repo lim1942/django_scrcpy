@@ -5,6 +5,7 @@
 <body onselectstart="return false;" unselectable="on">
 <div id='container' style="display: inline-block;"></div>
 <div style="display: inline-block; vertical-align:top;">
+  <div>duration: <em id="player_duration">0</em></div>
   <div>
     <select id="video_play_select" style="width:100px;height:30px">
         <option value="broardway">broardway</option>
@@ -608,6 +609,7 @@
       window.ws = new WebSocket(ws_url)
       window.ws.binaryType = 'arraybuffer'
       window.ws.onopen = function (e) {
+          window.player_start_date = new Date();
           console.log('ws:Client connected')
       }
       window.ws.onmessage = function (msg) {
@@ -636,6 +638,7 @@
           }
       }
       window.ws.onclose = function (e) {
+          window.player_start_date = null;
           console.log('ws: Client disconnected')
       }
    }
@@ -649,8 +652,19 @@
       load_websocket()
     }
 
+    //flush_duration
+    function flush_duration(){
+      if (window.player_start_date){
+        date_now = new Date();
+        document.getElementById("player_duration").innerHTML = parseInt((date_now - window.player_start_date)/1000);
+      }else{
+        document.getElementById("player_duration").innerHTML = 0;
+      }
+    }
+
     // window onload
     window.onload = function(){
+      setInterval(flush_duration, 1000);
       document.getElementById('reload_button').addEventListener('click', reload)
       load_utils()
       load_audio_player()
