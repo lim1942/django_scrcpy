@@ -78,7 +78,11 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     search_fields = ['device_id']
     list_filter = ['device_id', 'format', 'start_time', 'finish_time']
     list_display = ['video_id', 'device_id', 'name', 'format', 'duration', 'size_kb', 'download', 'video_play', 'start_time', 'finish_time']
-    
+
+    def get_readonly_fields(self, request, obj=None):
+        if obj:
+            return ['video_id', 'device_id', 'format', 'start_time', 'finish_time', 'config', 'duration']
+
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         for obj in queryset:
             video_path = os.path.join(MEDIA_ROOT, 'video', f'{obj.video_id}.{obj.format}')
