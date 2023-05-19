@@ -146,6 +146,7 @@ class DeviceClient:
                 await self.ws_client.send(bytes_data=current_nal_data)
                 await self.send_to_recorder(frame_meta+current_nal_data)
             except (asyncio.streams.IncompleteReadError, AttributeError):
+                await self.ws_client.close()
                 break
 
     async def _audio_task(self):
@@ -180,7 +181,7 @@ class DeviceClient:
     async def start_recorder(self):
         if sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None):
             record_type = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
-            cmd = f'asset/recorder.out {self.session_id}.{record_type}'
+            cmd = f'asset/recorder.out {self.session_id}.{record_type} 127.0.0.1 45678'
             await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
             for _ in range(200):
                 await asyncio.sleep(0.01)
@@ -200,8 +201,9 @@ class DeviceClient:
         await self.recorder_tool.del_recorder_socket(self.session_id)
 
     async def start(self):
-        # deploy
+        # 开始录屏
         await self.start_recorder()
+        # deploy
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
         # init
@@ -227,4 +229,5 @@ class DeviceClient:
         # deploy
         await self.deploy_socket.disconnect()
         await self.cancel_task(self.deploy_task)
+        # 停止录屏
         await self.stop_recorder()

@@ -46,13 +46,13 @@ sc_demuxer_to_avcodec_id(uint32_t codec_id) {
 
 
 // 创建socket用于接受需要录屏的流
-int create_socket(const char *session_id)
+int create_socket(const char *session_id, char *host, int port)
 {
 	int sockfd = socket(AF_INET, SOCK_STREAM, 0);
 	struct sockaddr_in serv_addr;
 	serv_addr.sin_family = AF_INET;
-	serv_addr.sin_addr.s_addr =  inet_addr("127.0.0.1");
-	serv_addr.sin_port = htons(8888);
+	serv_addr.sin_addr.s_addr =  inet_addr(host);
+	serv_addr.sin_port = htons(port);
     if(connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(struct sockaddr)) == -1){
         fprintf(stderr, "socket Connect failed\n");
     }
@@ -207,8 +207,16 @@ sc_recv_packet(int sockfd, AVPacket *packet){
 
 bool main(int argc, char **argv){
     // 1.创建socket
+    char *host = "127.0.0.1";
+    int port = 45678;
     char *filename  = argv[1];
-    int sockfd = create_socket(filename);
+    if (argc>=3){
+        host = argv[2];
+        if (argc>=4){
+            port = atoi(argv[3]);
+        }
+    }
+    int sockfd = create_socket(filename, host, port);
 
     // 2.创建封装容器
     av_register_all();

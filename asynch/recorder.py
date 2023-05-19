@@ -4,7 +4,7 @@ from asynch.nettool import AsyncSocket
 
 
 class RecorderTool:
-    SERVER_PORT = 8888
+    SERVER_PORT = 45678
     SERVER_HOST = '0.0.0.0'
     RECORDER_CLIENT_SOCKET = {}
     EVENT_LOOP = asyncio.new_event_loop()
@@ -43,4 +43,5 @@ class RecorderTool:
             del cls.RECORDER_CLIENT_SOCKET[session_id]
 
 
-
+if __name__ == "__main__":
+    RecorderTool.start_server()
