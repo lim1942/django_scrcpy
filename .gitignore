@@ -133,3 +133,4 @@ dataset/
 .zip
 nohup.out
 /staticfiles/
+asset/recorder.out
