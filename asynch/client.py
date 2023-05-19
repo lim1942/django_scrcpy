@@ -7,8 +7,6 @@ import struct
 import asyncio
 import datetime
 
-from bitstring import BitStream
-from h26x_extractor.nalutypes import SPS
 from channels.db import database_sync_to_async
 
 from asynch.controller import Controller
@@ -70,19 +68,6 @@ class DeviceClient:
         self.recorder_format = None
         self.recorder_start_time = None
         self.recorder_finish_time = None
-
-    def update_resolution(self, current_nal_data):
-        # when read a sps frame, change origin resolution
-        if current_nal_data.startswith(b'\x00\x00\x00\x01g'):
-            # sps resolution not equal device resolution, so reuse and transform original resolution
-            sps = SPS(BitStream(current_nal_data[5:]), False)
-            width = (sps.pic_width_in_mbs_minus_1 + 1) * 16
-            height = (2 - sps.frame_mbs_only_flag) * (sps.pic_height_in_map_units_minus_1 + 1) * 16
-            if width > height:
-                resolution = (max(self.resolution), min(self.resolution))
-            else:
-                resolution = (min(self.resolution), max(self.resolution))
-            self.resolution = resolution
 
     async def shell(self, command):
         if isinstance(command, list):
@@ -147,7 +132,6 @@ class DeviceClient:
                 frame_meta = await self.video_socket.read_exactly(12)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.video_socket.read_exactly(data_length)
-                self.update_resolution(current_nal_data)
                 # 2.向客户端发送当前nal
                 await self.ws_client.send(bytes_data=current_nal_data)
                 await self.send_to_recorder(frame_meta+current_nal_data)
@@ -168,12 +152,11 @@ class DeviceClient:
             except (asyncio.streams.IncompleteReadError, AttributeError):
                 break
 
-    async def handle_config_nal(self):
+    async def handle_first_config_nal(self):
         # 1.video_config_packet
         frame_meta = await self.video_socket.read_exactly(12)
         data_length = struct.unpack('>L', frame_meta[8:])[0]
         video_config_nal = await self.video_socket.read_exactly(data_length)
-        self.update_resolution(video_config_nal)
         await self.ws_client.send(bytes_data=video_config_nal)
         await self.send_to_recorder(frame_meta + video_config_nal)
         # 2.audio_config_packet
@@ -220,15 +203,15 @@ class DeviceClient:
             await database_sync_to_async(Video.objects.create)(**data)
 
     async def start(self):
-        # 开始录屏
+        # start_recorder
         await self.start_recorder()
-        # deploy
+        # start deploy server
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
-        # init
+        # create socket and get first config nal
         await self.create_socket()
         self.recorder_start_time = datetime.datetime.now()
-        await self.handle_config_nal()
+        await self.handle_first_config_nal()
         # video
         self.video_task = asyncio.create_task(self._video_task())
         # audio
@@ -247,8 +230,8 @@ class DeviceClient:
         # control
         if self.control_socket:
             await self.control_socket.disconnect()
-        # deploy
+        # stop deploy server
         await self.deploy_socket.disconnect()
         await self.cancel_task(self.deploy_task)
-        # 停止录屏
+        # stop_recorder
         await self.stop_recorder()

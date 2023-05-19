@@ -46,7 +46,7 @@ class Controller:
         await self.inject(inject_data)
         return inject_data
 
-    async def inject_touch_event(self, x, y, action=android_motionevent_action.AMOTION_EVENT_ACTION_DOWN, touch_id=-1,
+    async def inject_touch_event(self, x, y, resolution, action=android_motionevent_action.AMOTION_EVENT_ACTION_DOWN, touch_id=-1,
                                  pressure=1, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
         action: android_motionevent_action
@@ -65,19 +65,19 @@ class Controller:
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT
         x, y = max(x, 0), max(y, 0)
         inject_data = struct.pack(">BBqiiHHHii", msg_type, action, touch_id, int(x), int(y),
-                                  int(self.device.resolution[0]), int(self.device.resolution[1]), pressure, buttons, pressure)
+                                  int(resolution[0]), int(resolution[1]), pressure, buttons, pressure)
         await self.inject(inject_data)
         return inject_data
 
-    async def inject_scroll_event(self, x, y, distance_x, distance_y, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
+    async def inject_scroll_event(self, x, y, distance_x, distance_y, resolution, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
         buttons: android_motionevent_buttons
         inject_data: lens 21
         """
         msg_type = sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT
         x, y = max(x, 0), max(y, 0)
-        inject_data = struct.pack(">BiiHHhhi", msg_type, int(x), int(y), int(self.device.resolution[0]),
-                                  int(self.device.resolution[1]), int(distance_x)*6000, int(distance_y)*6000, buttons)
+        inject_data = struct.pack(">BiiHHhhi", msg_type, int(x), int(y), int(resolution[0]),
+                                  int(resolution[1]), int(distance_x)*6000, int(distance_y)*6000, buttons)
         await self.inject(inject_data)
         return inject_data
 
@@ -133,12 +133,12 @@ class Controller:
         await self.inject_without_lock(inject_data)
         return inject_data
 
-    async def swipe(self, x, y, end_x, end_y, unit=5, delay=1):
+    async def swipe(self, x, y, end_x, end_y, resolution, unit=5, delay=1):
         """
         swipe (x,y) to (end_x, end_y), 匀速移动，每unit个像素点出发一次touch move事件
         """
         x_1, y_1 = x, y
-        end_x, end_y = min(end_x, self.device.resolution[0]), min(end_y, self.device.resolution[1])
+        end_x, end_y = min(end_x, resolution[0]), min(end_y, resolution[1])
         step = 1
         while True:
             if x_1 > end_x:

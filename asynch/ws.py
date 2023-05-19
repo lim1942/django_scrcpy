@@ -40,10 +40,10 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
             await self.device_client.controller.inject_text(obj.text)
         # touch
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_TOUCH_EVENT:
-            await self.device_client.controller.inject_touch_event(x=obj.x, y=obj.y, action=obj.action)
+            await self.device_client.controller.inject_touch_event(x=obj.x, y=obj.y, resolution=obj.resolution, action=obj.action)
         # scroll
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SCROLL_EVENT:
-            await self.device_client.controller.inject_scroll_event(x=obj.x, y=obj.y, distance_x=obj.distance_x, distance_y=obj.distance_y)
+            await self.device_client.controller.inject_scroll_event(x=obj.x, y=obj.y, distance_x=obj.distance_x, distance_y=obj.distance_y, resolution=obj.resolution)
         # back_or_screen_on
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_BACK_OR_SCREEN_ON:
             if not obj.action:
@@ -64,7 +64,10 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
             await self.device_client.controller.set_screen_power_mode(obj.screen_power_mode)
         # swipe
         elif obj.msg_type == sc_control_msg_type.SC_CONTROL_MSG_TYPE_INJECT_SWIPE_EVENT:
-            await self.device_client.controller.swipe(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y, unit=obj.unit, delay=obj.delay)
+            await self.device_client.controller.swipe(x=obj.x, y=obj.y, end_x=obj.end_x, end_y=obj.end_y, resolution=obj.resolution, unit=obj.unit, delay=obj.delay)
+        # update resolution
+        elif obj.msg_type == 999:
+            self.device_client.resolution = obj.resolution
 
     async def disconnect(self, code):
         await self.device_client.stop()
