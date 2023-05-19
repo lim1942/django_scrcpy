@@ -1,4 +1,5 @@
 import os
+import json
 from typing import Any, Optional
 from urllib.parse import quote
 from django.db.models.query import QuerySet
@@ -21,7 +22,7 @@ class MobileAdmin(ExportActionMixin, admin.ModelAdmin):
     show_full_result_count = True
     search_fields = ['name']
     list_filter = ['device_type', 'updated_time', 'created_time']
-    list_display = ['device_id', 'device_name', 'device_type', 'online', 'screen', 'filemanager', 'updated_time', 'created_time']
+    list_display = ['device_id', 'device_name', 'device_type', 'recorder', 'online', 'screen', 'filemanager', 'updated_time', 'created_time']
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -31,6 +32,13 @@ class MobileAdmin(ExportActionMixin, admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+    
+    def recorder(self, obj):
+        if json.loads(obj.config)['recorder']:
+            return '🟢'
+        else:
+            return '🔴'
+    recorder.short_description = '开启录屏'
 
     def online(self, obj):
         if self.devices_dict.get(obj.device_id, {}).get('online'):
