@@ -126,8 +126,8 @@ class DeviceClient:
             print(f"【{self.device_id}】:", data.rstrip('\r\n').rstrip('\n'))
 
     async def _video_task(self):
-        while True:
-            try:
+        try:
+            while True:
                 # 1.读取frame_meta
                 frame_meta = await self.video_socket.read_exactly(12)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
@@ -135,13 +135,13 @@ class DeviceClient:
                 # 2.向客户端发送当前nal
                 await self.ws_client.send(bytes_data=current_nal_data)
                 await self.send_to_recorder(frame_meta+current_nal_data)
-            except (asyncio.streams.IncompleteReadError, AttributeError):
-                await self.ws_client.close()
-                break
+        finally:
+            await self.ws_client.close()
+
 
     async def _audio_task(self):
-        while True:
-            try:
+        try:
+            while True:
                 # 1.读取frame_meta
                 frame_meta = await self.audio_socket.read_exactly(12)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
@@ -149,8 +149,8 @@ class DeviceClient:
                 # 2.向客户端发送当前nal
                 await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
                 await self.send_to_recorder(frame_meta + current_nal_data)
-            except (asyncio.streams.IncompleteReadError, AttributeError):
-                break
+        finally:
+            await self.ws_client.close()
 
     async def handle_first_config_nal(self):
         # 1.video_config_packet
