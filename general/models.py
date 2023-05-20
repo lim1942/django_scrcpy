@@ -10,6 +10,17 @@ LOG_LEVEL_CHOICE = (
     ('error', 'error'),
 )
 
+VIDEO_CODEC_CHOICE = (
+    ('h264', 'h264'),
+    ('h265', 'h265'),
+)
+
+AUDIO_CODEC_CHOICE = (
+    ('aac', 'aac'),
+    ('opus', 'opus'),
+    ('raw', 'raw'),
+)
+
 VIDEO_ENCODER_CHOICE = (
     # 264
     ('OMX.google.h264.encoder', 'OMX.google.h264.encoder'),
@@ -75,9 +86,9 @@ DEFAULT_SCRCPY_KWARGS = {
     # 18 音频编码参数
     "audio_codec_options": "",
     # 19 视频具体编码
-    "video_encoder": "OMX.google.h264.encoder",
+    # "video_encoder": "OMX.google.h264.encoder",
     # 20 音频具体编码
-    "audio_encoder": "OMX.google.aac.encoder",
+    # "audio_encoder": "OMX.google.aac.encoder",
     # 21 scrcpy解锁设备锁屏
     "power_off_on_close": False,
     # 22 clipboard_autosync为True，在有选择文本才同步剪切板，False为随时获取剪切板

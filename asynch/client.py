@@ -49,8 +49,9 @@ class DeviceClient:
         # 需要推流的ws_client
         self.ws_client = ws_client
         # 录屏相关
+        self.recorder_enable = sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None)
         self.recorder_socket = None
-        self.recorder_format = None
+        self.recorder_format = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
         self.recorder_start_time = None
         self.recorder_finish_time = None
 
@@ -169,8 +170,7 @@ class DeviceClient:
             await self.send_to_recorder(frame_meta + audio_config_nal)
 
     async def start_recorder(self):
-        if sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None):
-            self.recorder_format = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
+        if self.recorder_enable:
             cmd = 'asset/recorder.out'
             args = [f'{self.session_id}.{self.recorder_format}', '127.0.0.1', '45678', 'media/video/']
             await asyncio.create_subprocess_exec(cmd, *args, stdout=sys.stdout, stderr=sys.stderr)

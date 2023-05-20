@@ -1,7 +1,7 @@
 import json
 
 from django import forms
-from general.models import Mobile, LOG_LEVEL_CHOICE, VIDEO_ENCODER_CHOICE, AUDIO_ENCODER_CHOICE
+from general.models import Mobile, LOG_LEVEL_CHOICE, VIDEO_CODEC_CHOICE, AUDIO_CODEC_CHOICE
 
 
 class MobileForm(forms.ModelForm):
@@ -9,6 +9,8 @@ class MobileForm(forms.ModelForm):
     recorder_mkv = forms.BooleanField(label="mkv录屏", help_text="关闭时为mp4录屏", required=False)
     log_level = forms.ChoiceField(label='日志等级', help_text='scrcpy 服务的日志等级', choices=LOG_LEVEL_CHOICE, required=False)
     audio = forms.BooleanField(label="开启声音", help_text="需要提前解锁手机", required=False)
+    video_codec = forms.ChoiceField(label='视频codec', choices=VIDEO_CODEC_CHOICE, required=False)
+    audio_codec = forms.ChoiceField(label='音频codec', choices=AUDIO_CODEC_CHOICE, required=False)
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)
     video_bit_rate = forms.IntegerField(label='视频比特率', help_text='800000, 此时视频比特率为800kbs', required=False)
     audio_bit_rate = forms.IntegerField(label='音频比特率', help_text='128000, 此时音频比特率为128kbs', required=False)
@@ -20,8 +22,6 @@ class MobileForm(forms.ModelForm):
     stay_awake = forms.BooleanField(label="保持唤醒", help_text="scrcpy连接时间设备屏幕常亮", required=False)
     video_codec_options = forms.CharField(label='视频编码参数', required=False)
     audio_codec_options = forms.CharField(label='音频编码参数', required=False)
-    video_encoder = forms.ChoiceField(label='视频编码方式', choices=VIDEO_ENCODER_CHOICE, required=False)
-    audio_encoder = forms.ChoiceField(label='音频编码方式', choices=AUDIO_ENCODER_CHOICE, required=False)
     power_off_on_close = forms.BooleanField(label='结束熄屏', required=False, help_text='scrcpy结束运行，屏幕熄灭')
     downsize_on_error = forms.BooleanField(label='尺寸适配', required=False, help_text='录屏编码错误，降低录屏尺寸适配')
     power_on = forms.BooleanField(label='开始亮屏', required=False, help_text='scrcpy开始运行，屏幕亮起')
@@ -41,17 +41,7 @@ class MobileForm(forms.ModelForm):
         config_dict = json.loads(self.instance.config)
         # update config_dict by form fields
         config_dict.update({field: self.cleaned_data[field] for field in self.cleaned_data if field in config_dict})
-        # adapt codec name
-        if ('hevc' in config_dict['video_encoder']) or ('HEVC' in config_dict['video_encoder']):
-            config_dict['video_codec'] = 'h265'
-        else:
-            config_dict['video_codec'] = 'h264'
-        if 'aac' in config_dict['audio_encoder']:
-            config_dict['audio_codec'] = 'aac'
-        elif config_dict['audio_encoder'] == '':
-            config_dict['audio_codec'] = 'raw'
-        else:
-            config_dict['audio_codec'] = 'opus'
+        # valid mp4 video recorder
         if (config_dict['recorder']) and (not config_dict['recorder_mkv']) and (config_dict['audio_codec']!='aac'):
             raise forms.ValidationError("recording: mp4 audio_codec only support aac!!!")
         # restore config_dict to config str
