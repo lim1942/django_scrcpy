@@ -23,9 +23,9 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.device_client = DeviceClient(self)
         try:
             await asyncio.wait_for(self.device_client.start(), 2)
-        except:
+        except Exception as e:
             await self.close()
-            print(f"DeviceClient:{self.device_id}: start error!!!")
+            print(f"DeviceClient:{self.device_id}: start error {type(e)}!!!")
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
