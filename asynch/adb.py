@@ -15,8 +15,10 @@ class AsyncAdbSocket(AsyncSocket):
     async def connect(self):
         try:
             self.reader, self.writer = await asyncio.wait_for(asyncio.open_connection(ADB_SERVER_ADDR, ADB_SERVER_PORT), self.socket_timeout)
-        except:
+        except Exception as e:
             await self.disconnect()
+            if isinstance(e, asyncio.CancelledError):
+                raise e
 
 
 class AsyncAdbDevice:
@@ -47,8 +49,10 @@ class AsyncAdbDevice:
                 await socket.write(self.cmd_format(connect_name))
                 assert await socket.read_exactly(4) == b'OKAY'
                 return socket
-            except:
+            except Exception as e:
                 await socket.disconnect()
+                if isinstance(e, asyncio.CancelledError):
+                    raise e
             await asyncio.sleep(0.01)
         else:
             raise ConnectionError(f"{self.device_id} create_connection to {connect_name} error!!")
@@ -63,8 +67,10 @@ class AsyncAdbDevice:
                 await socket.write(self.cmd_format('shell:{}'.format(command)))
                 assert await socket.read_exactly(4) == b'OKAY'
                 return socket
-            except:
+            except Exception as e:
                 await socket.disconnect()
+                if isinstance(e, asyncio.CancelledError):
+                    raise e
             await asyncio.sleep(0.01)
         else:
             raise ConnectionError(f"{self.device_id} create_shell error!!")
@@ -89,8 +95,10 @@ class AsyncAdbDevice:
                 assert await socket.read_exactly(4) == b'OKAY'
                 await socket.write(command.encode("utf-8") + struct.pack("<I", len(path.encode('utf-8'))) + path.encode("utf-8"))
                 return socket
-            except:
+            except Exception as e:
                 await socket.disconnect()
+                if isinstance(e, asyncio.CancelledError):
+                    raise e
             await asyncio.sleep(0.01)
         else:
             raise ConnectionError(f"{self.device_id} create_sync error!!")
