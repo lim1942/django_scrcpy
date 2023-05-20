@@ -34,7 +34,7 @@ class MobileAdmin(ExportActionMixin, admin.ModelAdmin):
         return False
     
     def recorder(self, obj):
-        if json.loads(obj.config)['recorder']:
+        if json.loads(obj.config).get('recorder'):
             return '🟢'
         else:
             return '🔴'

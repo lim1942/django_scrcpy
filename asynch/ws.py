@@ -1,3 +1,4 @@
+import asyncio
 from urllib import parse
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -14,13 +15,17 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.device_client = None
 
     async def connect(self):
-        await self.accept()
         # 1.获取请求参数
         self.query_params = parse.parse_qs(self.scope['query_string'].decode())
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
         # 2.获取当前ws_client对应的 device_client
+        await self.accept()
         self.device_client = DeviceClient(self)
-        await self.device_client.start()
+        try:
+            await asyncio.wait_for(self.device_client.start(), 2)
+        except:
+            await self.close()
+            print(f"DeviceClient:{self.device_id}: start error!!!")
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""

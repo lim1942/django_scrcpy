@@ -190,6 +190,7 @@ class DeviceClient:
     async def stop_recorder(self):
         if self.recorder_socket:
             from general.models import Video
+            self.recorder_socket = None
             await self.recorder_tool.del_recorder_socket(self.session_id)
             data = dict(
                 video_id=self.session_id,
@@ -204,35 +205,48 @@ class DeviceClient:
             await database_sync_to_async(Video.objects.create)(**data)
 
     async def start(self):
-        # start_recorder
-        await self.start_recorder()
-        # start deploy server
+        # 1.start deploy server
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
-        # create socket and get first config nal
+        # 2.start_recorder
+        await self.start_recorder()
+        # 3.create socket and get first config nal
         await self.create_socket()
         self.recorder_start_time = datetime.datetime.now()
         await self.handle_first_config_nal()
-        # video
+        # 4.video task
         self.video_task = asyncio.create_task(self._video_task())
-        # audio
+        # 5.audio task
         if self.scrcpy_kwargs['audio']:
             self.audio_task = asyncio.create_task(self._audio_task())
 
     async def stop(self):
-        # video
+        # 1.stop video task
         self.recorder_finish_time = datetime.datetime.now()
-        await self.video_socket.disconnect()
-        await self.cancel_task(self.video_task)
-        # audio
-        if self.scrcpy_kwargs['audio']:
+        if self.video_socket:
+            await self.video_socket.disconnect()
+            self.video_socket = None
+        if self.video_task:
+            await self.cancel_task(self.video_task)
+            self.video_task = None
+        # 2.stop audio task
+        if self.audio_socket:
             await self.audio_socket.disconnect()
+            self.audio_socket = None
+        if self.audio_task:
             await self.cancel_task(self.audio_task)
-        # control
+            self.audio_task = None
+        # 3.close control socket
         if self.control_socket:
             await self.control_socket.disconnect()
-        # stop deploy server
-        await self.deploy_socket.disconnect()
-        await self.cancel_task(self.deploy_task)
-        # stop_recorder
+            self.control_socket = None
+        # 4.stop deploy server
+        if self.deploy_socket:
+            await self.deploy_socket.disconnect()
+            self.deploy_socket = None
+        if self.deploy_task:
+            await self.cancel_task(self.deploy_task)
+            self.deploy_task = None
+        # 5.stop_recorder
         await self.stop_recorder()
+        print(f"DeviceClient:{self.device_id}: stoped !!!")
