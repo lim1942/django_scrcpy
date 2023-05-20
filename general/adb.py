@@ -13,16 +13,12 @@ class AdbDevice:
     def list(cls, slug=False):
         devices = {}
         for item in cls.adb.list():
-            adb_item = adbutils.adb.device(serial=item.serial)
             info = dict()
             device_id = item.serial.replace(':', '_').replace('.', ',') if slug else item.serial
             info['device_id'] = device_id
             info['status'] = item.state
             info['online'] = item.state == 'device'
-            try:
-                info['marketname'] = adb_item.shell(["getprop", "ro.product.marketname"])
-            except:
-                info['marketname'] = ''
+            info['marketname'] = ''
             devices[device_id] = info
         return devices
 
