@@ -22,7 +22,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         await self.accept()
         self.device_client = DeviceClient(self)
         try:
-            await asyncio.wait_for(self.device_client.start(), 2)
+            await asyncio.wait_for(self.device_client.start(), 4)
         except Exception as e:
             await self.close()
             print(f"DeviceClient:{self.device_id}: start error {type(e)}!!!")
