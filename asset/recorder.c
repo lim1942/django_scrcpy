@@ -8,6 +8,12 @@
 #include <libavformat/avformat.h>
 #include <libavutil/time.h>
 
+// libavformat 版本
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(58, 9, 100)
+# define SCRCPY_LAVF_HAS_NEW_MUXER_ITERATOR_API
+#else
+# define SCRCPY_LAVF_REQUIRES_REGISTER_ALL
+#endif
 
 // 定义帧的pts
 #define SC_PACKET_FLAG_CONFIG    (UINT64_C(1) << 63)
@@ -39,7 +45,7 @@ sc_demuxer_to_avcodec_id(uint32_t codec_id) {
         case SC_CODEC_ID_RAW:
             return AV_CODEC_ID_PCM_S16LE;
         default:
-            printf("Unknown codec id 0x%08" PRIx32, codec_id);
+            printf("recorder.c: Unknown codec id 0x%08" PRIx32, codec_id);
             return AV_CODEC_ID_NONE;
     }
 }
@@ -54,7 +60,7 @@ int create_socket(const char *session_id, char *host, int port)
 	serv_addr.sin_addr.s_addr =  inet_addr(host);
 	serv_addr.sin_port = htons(port);
     if(connect(sockfd, (struct sockaddr *)(&serv_addr), sizeof(struct sockaddr)) == -1){
-        fprintf(stderr, "socket Connect failed\n");
+        fprintf(stderr, "recorder.c: socket Connect failed\n");
     }
     send(sockfd, session_id, strlen(session_id), 0);
 	return sockfd;
@@ -81,9 +87,17 @@ bool sc_str_list_contains(const char *list, char sep, const char *s) {
 // 创建封装容器
 static const AVOutputFormat *
 find_muxer(const char *name) {
+#ifdef SCRCPY_LAVF_HAS_NEW_MUXER_ITERATOR_API
+    void *opaque = NULL;
+#endif
     const AVOutputFormat *oformat = NULL;
     do {
+#ifdef SCRCPY_LAVF_HAS_NEW_MUXER_ITERATOR_API
+        oformat = av_muxer_iterate(&opaque);
+#else
         oformat = av_oformat_next(oformat);
+#endif
+        // until null or containing the requested name
     } while (oformat && !sc_str_list_contains(oformat->name, ',', name));
     return oformat;
 }
@@ -97,7 +111,7 @@ AVCodecContext * create_video_codec_ctx(enum AVCodecID codec_id, uint32_t width,
     codec_ctx->height = height;
     codec_ctx->pix_fmt = AV_PIX_FMT_YUV420P;
     if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
-        printf("Demuxer : could not open video codec");
+        printf("recorder.c: demuxer could not open video codec");
     }
     return codec_ctx;
 }
@@ -111,7 +125,7 @@ AVCodecContext * create_audio_codec_ctx(enum AVCodecID codec_id){
     codec_ctx->channels = 2;
     codec_ctx->sample_rate = 48000;
     if (avcodec_open2(codec_ctx, codec, NULL) < 0) {
-        printf("Demuxer : could not open audio codec");
+        printf("recorder.c: demuxer could not open audio codec");
     }
     return codec_ctx;
 }
@@ -158,7 +172,7 @@ sc_packet_merger_merge(struct sc_packet_merger *merger, AVPacket *packet) {
         free(merger->config);
         merger->config = malloc(packet->size);
         if (!merger->config) {
-            printf("malloc error\n");
+            printf("recorder.c: malloc error\n");
         }
         memcpy(merger->config, packet->data, packet->size);
         merger->config_size = packet->size;
@@ -166,7 +180,7 @@ sc_packet_merger_merge(struct sc_packet_merger *merger, AVPacket *packet) {
         size_t config_size = merger->config_size;
         size_t media_size = packet->size;
         if (av_grow_packet(packet, config_size)) {
-            printf("av_grow_packet error\n");
+            printf("recorder.c: av_grow_packet error\n");
         }
         memmove(packet->data + config_size, packet->data, media_size);
         memcpy(packet->data, merger->config, config_size);
@@ -223,7 +237,9 @@ bool main(int argc, char **argv){
     int sockfd = create_socket(filename, host, port);
 
     // 2.创建封装容器
-    av_register_all();
+    #ifdef SCRCPY_LAVF_REQUIRES_REGISTER_ALL
+        av_register_all();
+    #endif
     const AVOutputFormat *format;
     if (strcmp(&filename[33],"mkv") == 0){
         format = find_muxer("matroska");
@@ -236,7 +252,7 @@ bool main(int argc, char **argv){
     // 3.创建存储文件，写入metadata
     char *full_filename = (char *) malloc(strlen(filepath) + strlen(filename));
     sprintf(full_filename, "%s%s", filepath, filename);
-    printf("record to %s !!! \n", full_filename);
+    printf("recorder.c: record to %s !!! \n", full_filename);
     avio_open(&format_ctx->pb, full_filename, AVIO_FLAG_WRITE);
     av_dict_set(&format_ctx->metadata, "comment","Recorded by django_scrcpy", 0);
 
@@ -287,7 +303,7 @@ bool main(int argc, char **argv){
     // 6.3 write_header
     bool ok = (avformat_write_header(format_ctx, NULL) >= 0);
     if (!ok) {
-        printf("Failed to write header to %s\n", filename);
+        printf("recorder.c: Failed to write header to %s\n", filename);
     }
 
     // 7.read packet
@@ -332,7 +348,7 @@ bool main(int argc, char **argv){
                 av_packet_rescale_ts(video_pkt_previous, SCRCPY_TIME_BASE, format_ctx->streams[0]->time_base);
                 ok = av_interleaved_write_frame(format_ctx, video_pkt_previous)>=0;
                 if (!ok){
-                    printf("Failed to write video packet to %s\n", filename);
+                    printf("recorder.c: Failed to write video packet to %s\n", filename);
                 }
                 av_packet_free(&video_pkt_previous);
             }
@@ -342,7 +358,7 @@ bool main(int argc, char **argv){
             av_packet_rescale_ts(packet, SCRCPY_TIME_BASE, format_ctx->streams[1]->time_base);
             ok = av_interleaved_write_frame(format_ctx, packet)>=0;
             if (!ok){
-                printf("Failed to write audio packet to %s\n", filename);
+                printf("recorder.c: Failed to write audio packet to %s\n", filename);
             }
         }
         av_packet_unref(packet);
@@ -358,10 +374,10 @@ bool main(int argc, char **argv){
     // 8.close
     int ret = av_write_trailer(format_ctx);
     if (ret < 0) {
-        printf("Failed to write trailer to %s", filename);
+        printf("recorder.c: Failed to write trailer to %s", filename);
     }
     avio_close(format_ctx->pb);
     avformat_free_context(format_ctx);
-    printf("success!!\n");
+    printf("recorder.c: success!!\n");
     return true;
 }

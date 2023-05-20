@@ -170,8 +170,9 @@ class DeviceClient:
     async def start_recorder(self):
         if sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None):
             self.recorder_format = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
-            cmd = f'asset/recorder.out {self.session_id}.{self.recorder_format} 127.0.0.1 45678 media/video/'
-            await asyncio.create_subprocess_shell(cmd, stdout=asyncio.subprocess.DEVNULL, stderr=asyncio.subprocess.DEVNULL)
+            cmd = 'asset/recorder.out'
+            args = [f'{self.session_id}.{self.recorder_format}', '127.0.0.1', '45678', 'media/video/']
+            await asyncio.create_subprocess_exec(cmd, *args, stdout=sys.stdout, stderr=sys.stderr)
             for _ in range(200):
                 await asyncio.sleep(0.01)
                 if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
