@@ -1,3 +1,4 @@
+import logging
 import asyncio
 import threading
 from asynch.nettool import AsyncSocket
@@ -14,7 +15,7 @@ class RecorderTool:
         recorder_client = AsyncSocket(reader=reader, writer=writer)
         session_id = await recorder_client.read_string_exactly(32)
         cls.RECORDER_CLIENT_SOCKET[session_id] = recorder_client
-        print(f"RecorderServer accept client {session_id}")
+        logging.info(f"【RecorderServer】 =======> accept client {session_id}")
 
     @classmethod
     async def _start_server(cls):
@@ -29,7 +30,7 @@ class RecorderTool:
             asyncio.run(cls._start_server())
         thread = threading.Thread(target=task, )
         thread.start()
-        print(f"RecorderServer start on {cls.SERVER_HOST}:{cls.SERVER_PORT}")
+        logging.info(f"【RecorderServer】 =======> start on {cls.SERVER_HOST}:{cls.SERVER_PORT}")
 
     @classmethod
     def get_recorder_socket(cls, session_id):
@@ -40,6 +41,7 @@ class RecorderTool:
         cls.RECORDER_CLIENT_SOCKET[session_id].writer.write_eof()
         await cls.RECORDER_CLIENT_SOCKET[session_id].writer.drain()
         del cls.RECORDER_CLIENT_SOCKET[session_id]
+        logging.info(f"【RecorderServer】 =======> remove client {session_id}")
 
 
 if __name__ == "__main__":

@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from urllib import parse
 
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -20,12 +21,13 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
         # 2.获取当前ws_client对应的 device_client
         await self.accept()
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}) =======> connected")
         self.device_client = DeviceClient(self)
         try:
             await asyncio.wait_for(self.device_client.start(), 4)
         except Exception as e:
             await self.close()
-            print(f"DeviceClient:{self.device_id}: start error {type(e)}!!!")
+            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}) start session {self.device_client.session_id} error {type(e)}!!!")
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
@@ -76,3 +78,4 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, code):
         await self.device_client.stop()
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}) =======> disconnected")

@@ -4,6 +4,7 @@ import uuid
 import json
 import random
 import struct
+import logging
 import asyncio
 import datetime
 
@@ -25,6 +26,7 @@ class DeviceClient:
 
     @classmethod
     async def cancel_task(cls, task):
+        logging.info(f"【DeviceClient】 cancel task {task}")
         # If task is already finish, this operation will return False, else return True(mean cancel operation success)
         task.cancel()
         try:
@@ -33,10 +35,10 @@ class DeviceClient:
             # [task cancel operation no effect] 1.task already finished
         except asyncio.CancelledError:
             # [task cancel operation success] 2.catch task CancelledError Exception
-            print("task is cancelled now")
+            logging.error("【DeviceClient】 task is cancelled now")
         except Exception as e:
             # [task cancel operation no effect] 3.task already finished with a normal Exception
-            print(f"task await exception {type(e)}, {e}")
+            logging.error(f"【DeviceClient】 task await exception {type(e)}, {e}")
 
     def __init__(self, ws_client):
         self.session_id = uuid.uuid4().hex
@@ -123,7 +125,7 @@ class DeviceClient:
             data = await self.deploy_socket.read_string_line()
             if not data:
                 break
-            print(f"【{self.device_id}】:", data.rstrip('\r\n').rstrip('\n'))
+            logging.info(f"【{self.session_id}】" + data.rstrip('\r\n').rstrip('\n'))
 
     async def _video_task(self):
         try:
@@ -137,7 +139,6 @@ class DeviceClient:
                 await self.send_to_recorder(frame_meta+current_nal_data)
         finally:
             await self.ws_client.close()
-
 
     async def _audio_task(self):
         try:
@@ -177,11 +178,11 @@ class DeviceClient:
                 await asyncio.sleep(0.01)
                 if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
                     self.recorder_socket = self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
-                    print(f"{self.device_id}:{self.session_id} success get recorder_socket")
+                    logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) success get recorder_socket")
                     break
 
             else:
-                print(f"{self.device_id}:{self.session_id} error in get recorder_socket")
+                logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) error in get recorder_socket")
 
     async def send_to_recorder(self, data):
         if self.recorder_socket:
@@ -205,19 +206,25 @@ class DeviceClient:
             await database_sync_to_async(Video.objects.create)(**data)
 
     async def start(self):
+        logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) =======> start {self.scrcpy_kwargs}")
         # 1.start deploy server
+        logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) (1).start deploy")
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
         # 2.start_recorder
+        logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) (2).start recorder")
         await self.start_recorder()
         # 3.create socket and get first config nal
+        logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) (3).start socket")
         await self.create_socket()
         self.recorder_start_time = datetime.datetime.now()
         await self.handle_first_config_nal()
         # 4.video task
+        logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) (4).start video task")
         self.video_task = asyncio.create_task(self._video_task())
         # 5.audio task
         if self.scrcpy_kwargs['audio']:
+            logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) (5).start audio task")
             self.audio_task = asyncio.create_task(self._audio_task())
 
     async def stop(self):
@@ -249,4 +256,4 @@ class DeviceClient:
             self.deploy_task = None
         # 5.stop_recorder
         await self.stop_recorder()
-        print(f"DeviceClient:{self.device_id}: stoped !!!")
+        logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) =======> stopped")
