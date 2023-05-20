@@ -1,3 +1,4 @@
+import uuid
 import asyncio
 import logging
 from urllib import parse
@@ -12,6 +13,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.device_id = None
+        self.session_id = None
         self.query_params = None
         self.device_client = None
 
@@ -19,15 +21,17 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         # 1.获取请求参数
         self.query_params = parse.parse_qs(self.scope['query_string'].decode())
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
+        self.session_id = uuid.uuid4().hex
+
         # 2.获取当前ws_client对应的 device_client
         await self.accept()
-        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}) =======> connected")
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) =======> connected")
         self.device_client = DeviceClient(self)
         try:
             await asyncio.wait_for(self.device_client.start(), 4)
         except Exception as e:
             await self.close()
-            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}) start session {self.device_client.session_id} error {type(e)}!!!")
+            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) start session error {type(e)}!!!")
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
@@ -78,4 +82,4 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
 
     async def disconnect(self, code):
         await self.device_client.stop()
-        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}) =======> disconnected")
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) =======> disconnected")

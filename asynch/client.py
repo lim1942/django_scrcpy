@@ -1,6 +1,5 @@
 import os
 import sys
-import uuid
 import json
 import random
 import struct
@@ -24,24 +23,8 @@ class DeviceClient:
     # socket超时时间,毫秒
     connect_timeout = 300
 
-    @classmethod
-    async def cancel_task(cls, task):
-        logging.info(f"【DeviceClient】 cancel task {task}")
-        # If task is already finish, this operation will return False, else return True(mean cancel operation success)
-        task.cancel()
-        try:
-            # Wait task done, Exception inside the task will raise here
-            await task
-            # [task cancel operation no effect] 1.task already finished
-        except asyncio.CancelledError:
-            # [task cancel operation success] 2.catch task CancelledError Exception
-            logging.error("【DeviceClient】 task is cancelled now")
-        except Exception as e:
-            # [task cancel operation no effect] 3.task already finished with a normal Exception
-            logging.error(f"【DeviceClient】 task await exception {type(e)}, {e}")
-
     def __init__(self, ws_client):
-        self.session_id = uuid.uuid4().hex
+        self.session_id = ws_client.session_id
         # scrcpy参数
         self.scrcpy_kwargs = json.loads(ws_client.query_params['config'][0])
         # devices
@@ -70,6 +53,21 @@ class DeviceClient:
         self.recorder_format = None
         self.recorder_start_time = None
         self.recorder_finish_time = None
+
+    async def cancel_task(self, task):
+        logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) task cancel {task}")
+        # If task is already finish, this operation will return False, else return True(mean cancel operation success)
+        task.cancel()
+        try:
+            # Wait task done, Exception inside the task will raise here
+            await task
+            # [task cancel operation no effect] 1.task already finished
+        except asyncio.CancelledError:
+            # [task cancel operation success] 2.catch task CancelledError Exception
+            logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) task is cancelled now")
+        except Exception as e:
+            # [task cancel operation no effect] 3.task already finished with a normal Exception
+            logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) task await exception {type(e)}, {e}")
 
     async def shell(self, command):
         if isinstance(command, list):
@@ -125,7 +123,7 @@ class DeviceClient:
             data = await self.deploy_socket.read_string_line()
             if not data:
                 break
-            logging.info(f"【{self.session_id}】" + data.rstrip('\r\n').rstrip('\n'))
+            logging.info(f"【DeviceClient】({self.device_id}:{self.session_id})" + data.rstrip('\r\n').rstrip('\n'))
 
     async def _video_task(self):
         try:
@@ -138,6 +136,7 @@ class DeviceClient:
                 await self.ws_client.send(bytes_data=current_nal_data)
                 await self.send_to_recorder(frame_meta+current_nal_data)
         finally:
+            # 多次调用ws-close，有且只有一次会生效，所以ws-client的disconnect方法只会执行一次，即stop方法只执行一次
             await self.ws_client.close()
 
     async def _audio_task(self):
@@ -151,6 +150,7 @@ class DeviceClient:
                 await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
                 await self.send_to_recorder(frame_meta + current_nal_data)
         finally:
+            # 多次调用ws-close，有且只有一次会生效，所以ws-client的disconnect方法只会执行一次，即stop方法只执行一次
             await self.ws_client.close()
 
     async def handle_first_config_nal(self):
@@ -180,7 +180,6 @@ class DeviceClient:
                     self.recorder_socket = self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
                     logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) success get recorder_socket")
                     break
-
             else:
                 logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) error in get recorder_socket")
 
@@ -228,32 +227,34 @@ class DeviceClient:
             self.audio_task = asyncio.create_task(self._audio_task())
 
     async def stop(self):
-        # 1.stop video task
-        self.recorder_finish_time = datetime.datetime.now()
-        if self.video_socket:
-            await self.video_socket.disconnect()
-            self.video_socket = None
-        if self.video_task:
-            await self.cancel_task(self.video_task)
-            self.video_task = None
-        # 2.stop audio task
-        if self.audio_socket:
-            await self.audio_socket.disconnect()
-            self.audio_socket = None
-        if self.audio_task:
-            await self.cancel_task(self.audio_task)
-            self.audio_task = None
-        # 3.close control socket
-        if self.control_socket:
-            await self.control_socket.disconnect()
-            self.control_socket = None
-        # 4.stop deploy server
-        if self.deploy_socket:
-            await self.deploy_socket.disconnect()
-            self.deploy_socket = None
-        if self.deploy_task:
-            await self.cancel_task(self.deploy_task)
-            self.deploy_task = None
-        # 5.stop_recorder
-        await self.stop_recorder()
+        try:
+            # 1.stop video task
+            self.recorder_finish_time = datetime.datetime.now()
+            if self.video_socket:
+                await self.video_socket.disconnect()
+                self.video_socket = None
+            if self.video_task:
+                await self.cancel_task(self.video_task)
+                self.video_task = None
+            # 2.stop audio task
+            if self.audio_socket:
+                await self.audio_socket.disconnect()
+                self.audio_socket = None
+            if self.audio_task:
+                await self.cancel_task(self.audio_task)
+                self.audio_task = None
+            # 3.close control socket
+            if self.control_socket:
+                await self.control_socket.disconnect()
+                self.control_socket = None
+            # 4.stop deploy server
+            if self.deploy_socket:
+                await self.deploy_socket.disconnect()
+                self.deploy_socket = None
+            if self.deploy_task:
+                await self.cancel_task(self.deploy_task)
+                self.deploy_task = None
+        finally:
+            # 5.stop_recorder
+            await self.stop_recorder()
         logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) =======> stopped")
