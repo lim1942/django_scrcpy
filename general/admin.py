@@ -77,7 +77,7 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     show_full_result_count = True
     search_fields = ['device_id']
     list_filter = ['device_id', 'format', 'start_time', 'finish_time']
-    list_display = ['video_id', 'format', 'device_id', 'name', 'duration', 'size_kb', 'download', 'video_play', 'start_time', 'finish_time']
+    list_display = ['video_id', 'format', 'device_id', 'name', 'duration', 'size', 'download', 'video_play', 'start_time', 'finish_time']
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -95,10 +95,6 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
         video_path = os.path.join(MEDIA_ROOT, 'video', f'{obj.video_id}.{obj.format}')
         os.remove(video_path)
         return super().delete_model(request, obj)
-    
-    def size_kb(self, obj):
-        return int(os.path.getsize(os.path.join(MEDIA_ROOT, 'video', f'{obj.video_id}.{obj.format}')) / 1024)
-    size_kb.short_description = '视频大小(KB)'
 
     def download(self, obj):
         download_url = f'/media/video/{obj.video_id}.{obj.format}'

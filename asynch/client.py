@@ -51,6 +51,7 @@ class DeviceClient:
         # 录屏相关
         self.recorder_enable = self.scrcpy_kwargs.pop('recorder_enable', None)
         self.recorder_format = self.scrcpy_kwargs.pop('recorder_format', None)
+        self.recorder_ctx = None
         self.recorder_socket = None
         self.recorder_start_time = None
         self.recorder_finish_time = None
@@ -173,7 +174,7 @@ class DeviceClient:
         if self.recorder_enable:
             cmd = 'asset/recorder.out'
             args = [f'{self.session_id}.{self.recorder_format}', '127.0.0.1', '45678', 'media/video/']
-            await asyncio.create_subprocess_exec(cmd, *args, stdout=sys.stdout, stderr=sys.stderr)
+            self.recorder_ctx = await asyncio.create_subprocess_exec(cmd, *args, stdout=sys.stdout, stderr=sys.stderr)
             for _ in range(200):
                 await asyncio.sleep(0.01)
                 if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
@@ -192,12 +193,13 @@ class DeviceClient:
             from general.models import Video
             self.recorder_socket = None
             await self.recorder_tool.del_recorder_socket(self.session_id)
+            await self.recorder_ctx.wait()
             data = dict(
                 video_id=self.session_id,
                 device_id=self.device_id,
                 format=self.recorder_format,
                 duration=(self.recorder_finish_time-self.recorder_start_time).seconds,
-                size=os.path.getsize(os.path.join(MEDIA_ROOT, 'video', f"{self.session_id}.{self.recorder_format}")),
+                size=int(os.path.getsize(os.path.join(MEDIA_ROOT, 'video', f"{self.session_id}.{self.recorder_format}"))/ 1024),
                 start_time=self.recorder_start_time,
                 finish_time=self.recorder_finish_time,
                 config=json.dumps(self.scrcpy_kwargs)
