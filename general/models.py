@@ -1,4 +1,6 @@
+import sys
 import json
+
 from django.db import models
 
 
@@ -46,9 +48,14 @@ AUDIO_ENCODER_CHOICE = (
     ('', ''),
 )
 
+RECORDER_FORMAT = (
+    ('mp4', 'mp4'),
+    ('mkv', 'mkv')
+)
+
 DEFAULT_SCRCPY_KWARGS = {
-    "recorder": True,
-    "recorder_mkv": False,
+    "recorder_enable": True if sys.platform.startswith('linux') else False,
+    "recorder_format": "mp4",
     # 1 scrcpy adb-socket-id, 用于手机区分多个启动的scrcpy。每次运行自动生成
     # "scid": -1,
     # 2. scrcpy日志等级
@@ -94,25 +101,25 @@ DEFAULT_SCRCPY_KWARGS = {
     # 22 clipboard_autosync为True，在有选择文本才同步剪切板，False为随时获取剪切板
     "clipboard_autosync": False,
     # 23 录屏编码错误，降低录屏尺寸适配
-    "downsize_on_error": True,
+    # "downsize_on_error": True,
     # 24 开启清理线程
-    "cleanup": True,
+    # "cleanup": True,
     # 25 启动亮屏
     "power_on": True,
     # 26 列出支持的编码，为True时列出，此时server不运行
-    "list_encoders": False,
+    # "list_encoders": False,
     # 27 列出display_id,为True时列出，此时server不运行
-    "list_displays": False,
+    # "list_displays": False,
     # 28 发送设备源信息，设备名，分辨率等
-    "send_device_meta": True,
+    # "send_device_meta": True,
     # 29 发送帧源信息
-    "send_frame_meta": True,
+    # "send_frame_meta": True,
     # 30 发送video socket连接成功dummy_byte
-    "send_dummy_byte": True,
+    # "send_dummy_byte": True,
     # 31 发送编码源信息
-    "send_codec_meta": True,
+    # "send_codec_meta": True,
     # 32 仅发送裸流，此时send_device_meta，send_frame_meta，send_dummy_byte，send_codec_meta会被置为False
-    "raw_video_stream": False
+    # "raw_video_stream": False
 }
 
 

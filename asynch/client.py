@@ -49,9 +49,9 @@ class DeviceClient:
         # 需要推流的ws_client
         self.ws_client = ws_client
         # 录屏相关
-        self.recorder_enable = sys.platform.startswith('linux') and self.scrcpy_kwargs.pop('recorder', None)
+        self.recorder_enable = self.scrcpy_kwargs.pop('recorder_enable', None)
+        self.recorder_format = self.scrcpy_kwargs.pop('recorder_format', None)
         self.recorder_socket = None
-        self.recorder_format = 'mkv' if self.scrcpy_kwargs.pop('recorder_mkv', None) else 'mp4'
         self.recorder_start_time = None
         self.recorder_finish_time = None
 
