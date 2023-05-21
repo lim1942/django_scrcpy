@@ -6,9 +6,9 @@ from general.models import Mobile, VIDEO_CODEC_CHOICE, AUDIO_CODEC_CHOICE, RECOR
 
 
 class MobileForm(forms.ModelForm):
-    recorder_enable = forms.BooleanField(label="开启录屏", help_text="需要linux部署", required=False)
-    audio = forms.BooleanField(label="开启声音", help_text="需要提前解锁手机", required=False)
-    control = forms.BooleanField(label="开启控制", help_text="可远程控制手机", required=False)
+    recorder_enable = forms.BooleanField(label="开启录屏", help_text="需要linux部署方式，window部署不可录屏", required=False)
+    audio = forms.BooleanField(label="开启声音", help_text="需要安卓版本>=11，安卓版本=11需要提前解锁手机", required=False)
+    control = forms.BooleanField(label="开启控制", help_text="可远程控制手机，控制关闭时仅可投屏", required=False)
     recorder_format = forms.ChoiceField(label="录屏格式", choices=RECORDER_FORMAT, required=False)
     video_codec = forms.ChoiceField(label='视频codec', choices=VIDEO_CODEC_CHOICE, required=False)
     video_codec_options = forms.CharField(label='视频codec参数', required=False)
@@ -17,12 +17,12 @@ class MobileForm(forms.ModelForm):
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)
     video_bit_rate = forms.IntegerField(label='视频比特率', help_text='800000, 此时视频比特率为800kbs', required=False)
     audio_bit_rate = forms.IntegerField(label='音频比特率', help_text='128000, 此时音频比特率为128kbs', required=False)
-    max_fps = forms.IntegerField(label='视频帧率', help_text='25, 此时最大帧率为25', required=False)
+    max_fps = forms.IntegerField(label='视频帧率', help_text='25, 视频最大帧率为25', required=False)
     crop = forms.CharField(label='裁剪尺寸', help_text="1224:1440:0:0，以(0,0)为原点的1224x1440屏幕区域", required=False)
     show_touches = forms.BooleanField(label="显示点击", help_text="显示屏幕点击操作", required=False)
-    stay_awake = forms.BooleanField(label="保持唤醒", help_text="scrcpy连接时间设备屏幕常亮", required=False)
-    power_off_on_close = forms.BooleanField(label='结束熄屏', required=False, help_text='scrcpy结束运行，屏幕熄灭')
-    power_on = forms.BooleanField(label='开始亮屏', required=False, help_text='scrcpy开始运行，屏幕亮起')
+    stay_awake = forms.BooleanField(label="保持唤醒", help_text="连接时间内，屏幕保持常亮", required=False)
+    power_off_on_close = forms.BooleanField(label='结束熄屏', required=False, help_text='结束连接时，屏幕熄灭')
+    power_on = forms.BooleanField(label='开始亮屏', required=False, help_text='开始连接时，屏幕亮起')
 
     def get_initial_for_field(self, field, field_name):
         """
