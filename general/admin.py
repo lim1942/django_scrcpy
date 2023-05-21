@@ -77,7 +77,7 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     show_full_result_count = True
     search_fields = ['device_id']
     list_filter = ['device_id', 'format', 'start_time', 'finish_time']
-    list_display = ['video_id', 'device_id', 'name', 'format', 'duration', 'size_kb', 'download', 'video_play', 'start_time', 'finish_time']
+    list_display = ['video_id', 'format', 'device_id', 'name', 'duration', 'size_kb', 'download', 'video_play', 'start_time', 'finish_time']
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
