@@ -15,7 +15,6 @@ class MobileForm(forms.ModelForm):
     video_bit_rate = forms.IntegerField(label='视频比特率', help_text='800000, 此时视频比特率为800kbs', required=False)
     audio_bit_rate = forms.IntegerField(label='音频比特率', help_text='128000, 此时音频比特率为128kbs', required=False)
     max_fps = forms.IntegerField(label='视频帧率', help_text='25, 此时最大帧率为25', required=False)
-    lock_video_orientation = forms.IntegerField(label='锁定方向', help_text='-1不锁定屏幕，0为正，1，2，3为屏幕依次顺时针90°', required=False)
     crop = forms.CharField(label='裁剪尺寸', help_text="1224:1440:0:0，以(0,0)为原点的1224x1440屏幕区域", required=False)
     control = forms.BooleanField(label="远程操控", help_text="可远程控制手机", required=False)
     show_touches = forms.BooleanField(label="显示点击", help_text="显示屏幕点击操作", required=False)

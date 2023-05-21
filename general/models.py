@@ -59,7 +59,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 1 scrcpy adb-socket-id, 用于手机区分多个启动的scrcpy。每次运行自动生成
     # "scid": -1,
     # 2. scrcpy日志等级
-    "log_level": "verbose",
+    # "log_level": "verbose",
     # 3 是否开启声音
     "audio": True,
     # 4 音频编码类型
@@ -75,7 +75,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 9 视频帧率
     "max_fps": 25,
     # 10 -1是不锁定屏幕旋转
-    "lock_video_orientation": -1,
+    # "lock_video_orientation": -1,
     # 11 通过tunnel_forward方式创建adb-socket
     "tunnel_forward": True,
     # 12 画面裁剪
