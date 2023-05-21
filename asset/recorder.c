@@ -219,7 +219,7 @@ sc_recv_packet(int sockfd, AVPacket *packet){
 }
 
 
-bool main(int argc, char **argv){
+int main(int argc, char **argv){
     // 1.创建socket
     char *host = "127.0.0.1";
     int port = 45678;
@@ -308,6 +308,7 @@ bool main(int argc, char **argv){
 
     // 7.read packet
     int64_t pts_origin = AV_NOPTS_VALUE;
+    int64_t pts_last;
     AVPacket *video_pkt_previous = NULL;
     // video or audio
     bool is_video_packet = false;
@@ -336,6 +337,7 @@ bool main(int argc, char **argv){
         if (pts_origin == AV_NOPTS_VALUE) {
             pts_origin = packet->pts;
         }
+        pts_last = packet->pts;
         packet->pts -= pts_origin;
         packet->dts = packet->pts;
 
@@ -378,6 +380,7 @@ bool main(int argc, char **argv){
     }
     avio_close(format_ctx->pb);
     avformat_free_context(format_ctx);
-    printf("recorder.c: success!!\n");
-    return true;
+    int duration = ceil((pts_last - pts_origin)/1000000);
+    printf("recorder.c: success, 视频时长:%d秒!!\n", duration);
+    return duration;
 }

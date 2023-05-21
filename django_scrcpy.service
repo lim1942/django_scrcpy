@@ -1,0 +1,16 @@
+[Unit]
+Description = django_scrcpy
+After = network.target
+
+[Service]
+ExecStart = /home/lim/miniconda3/bin/daphne django_scrcpy.asgi:application -b 0.0.0.0 -p 8000
+ExecStop = make stop
+WorkingDirectory = /mnt/sdb1/develop/project/django_scrcpy
+#StandardOutput = null
+#StandardError = null
+Restart = always
+User = lim
+
+[Install]
+WantedBy=multi-user.target
+
