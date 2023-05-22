@@ -189,36 +189,41 @@ class DeviceClient:
         if self.recorder_socket:
             try:
                 await self.recorder_socket.write(data)
-            except:
-                self.recorder_socket = None
-                del self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
-                logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) recorder_error send_to_recorder")
-                try:
-                    os.remove(os.path.join(MEDIA_ROOT, 'video', f"{self.session_id}.{self.recorder_format}"))
-                except:
-                    pass
+            except Exception as e:
+                await self.stop_recorder()
 
     async def stop_recorder(self):
         if self.recorder_socket:
-            from general.models import Video
-            self.recorder_socket = None
-            await self.recorder_tool.del_recorder_socket(self.session_id)
-            await self.recorder_ctx.wait()
-            stdout, stderr = await self.recorder_ctx.communicate()
-            stdout_msg = stdout.decode('utf-8')
-            logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) {stdout_msg}")
-            duration = int(re.search(r"视频时长:(\d+)秒!!", stdout_msg).group(1))
-            data = dict(
-                video_id=self.session_id,
-                device_id=self.device_id,
-                format=self.recorder_format,
-                duration=duration,
-                size=int(os.path.getsize(os.path.join(MEDIA_ROOT, 'video', f"{self.session_id}.{self.recorder_format}"))/ 1024),
-                start_time=self.recorder_start_time,
-                finish_time=self.recorder_finish_time,
-                config=json.dumps(self.scrcpy_kwargs)
-            )
-            await database_sync_to_async(Video.objects.create)(**data)
+            recorder_filename = os.path.join(MEDIA_ROOT, 'video', f"{self.session_id}.{self.recorder_format}")
+            try:
+                from general.models import Video
+                self.recorder_socket = None
+                await self.recorder_tool.del_recorder_socket(self.session_id)
+                await self.recorder_ctx.wait()
+                stdout, stderr = await self.recorder_ctx.communicate()
+                stdout_msg = stdout.decode('utf-8')
+                logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) {stdout_msg}")
+                duration = int(re.search(r"视频时长:(\d+)秒!!", stdout_msg).group(1))
+                data = dict(
+                    video_id=self.session_id,
+                    device_id=self.device_id,
+                    format=self.recorder_format,
+                    duration=duration,
+                    size=int(os.path.getsize(recorder_filename)/ 1024),
+                    start_time=self.recorder_start_time,
+                    finish_time=self.recorder_finish_time,
+                    config=json.dumps(self.scrcpy_kwargs)
+                )
+                await database_sync_to_async(Video.objects.create)(**data)
+            except Exception as e:
+                logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) recorder_error stop_recorder {type(e)}: {str(e)}")
+                self.recorder_socket = None
+                if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
+                    del self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
+                try:
+                    os.remove(recorder_filename)
+                except:
+                    pass
 
     async def start(self):
         logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) =======> start {self.scrcpy_kwargs}")
