@@ -29,7 +29,7 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 > `adb devices` in command line can list connected device.    
 > _**List of devices attached**_   
 > **_ba406a9e0421    device_**
-- Install    
+- Install（项目升级时需要删除目录下db.sqlite文件，重新install）  
  `pip install -r requirements.txt`  
  `python init.py`
 - Run（Visit http://127.0.0.1:8000/admin）  
