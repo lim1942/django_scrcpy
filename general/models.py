@@ -61,7 +61,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 2. scrcpy日志等级
     # "log_level": "verbose",
     # 3 是否开启声音
-    "audio": False,
+    "audio": True,
     # 4 音频编码类型
     "video_codec": "h264",
     # 5 音频编码类型
