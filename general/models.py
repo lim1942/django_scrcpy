@@ -137,7 +137,7 @@ class Mobile(models.Model):
 
     class Meta:
         verbose_name_plural = verbose_name = '手机'
-        ordering = ('updated_time', 'created_time')
+        ordering = ('-updated_time', )
 
 
 class Video(models.Model):
