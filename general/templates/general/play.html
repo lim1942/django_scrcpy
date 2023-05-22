@@ -667,6 +667,7 @@
     // reload
     function reload(){
       window.ws.close()
+      document.getElementById("error_msg1").style.display='none';
       load_audio_player()
       load_video_player()
       load_websocket()

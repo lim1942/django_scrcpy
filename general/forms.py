@@ -11,7 +11,7 @@ class MobileForm(forms.ModelForm):
     control = forms.BooleanField(label="开启控制", help_text="可远程控制手机，控制关闭时仅可投屏", required=False)
     recorder_format = forms.ChoiceField(label="录屏格式", choices=RECORDER_FORMAT, required=False)
     video_codec = forms.ChoiceField(label='视频codec', choices=VIDEO_CODEC_CHOICE, required=False)
-    video_codec_options = forms.CharField(label='视频codec参数', required=False)
+    video_codec_options = forms.CharField(label='视频codec参数', help_text="若无画面请尝试设置: profile=1,level=2", required=False)
     audio_codec = forms.ChoiceField(label='音频codec', choices=AUDIO_CODEC_CHOICE, required=False)
     audio_codec_options = forms.CharField(label='音频codec参数', required=False)
     max_size = forms.IntegerField(label='最大尺寸', help_text='720, 此时输出视频最大尺寸为720', required=False)

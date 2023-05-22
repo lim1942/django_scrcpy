@@ -89,7 +89,7 @@ DEFAULT_SCRCPY_KWARGS = {
     # 16 保持设备唤醒
     "stay_awake": True,
     # 17 视频编码参数，次参数为视频OMX.google.h264.encoder在有些机型报错
-    "video_codec_options": "profile=1,level=2",
+    "video_codec_options": "",
     # 18 音频编码参数
     "audio_codec_options": "",
     # 19 视频具体编码
