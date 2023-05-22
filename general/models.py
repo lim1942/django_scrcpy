@@ -93,9 +93,9 @@ DEFAULT_SCRCPY_KWARGS = {
     # 18 音频编码参数
     "audio_codec_options": "",
     # 19 视频具体编码
-    # "video_encoder": "OMX.google.h264.encoder",
+    "video_encoder": "",
     # 20 音频具体编码
-    # "audio_encoder": "OMX.google.aac.encoder",
+    "audio_encoder": "",
     # 21 scrcpy解锁设备锁屏
     "power_off_on_close": False,
     # 22 clipboard_autosync为True，在有选择文本才同步剪切板，False为随时获取剪切板
