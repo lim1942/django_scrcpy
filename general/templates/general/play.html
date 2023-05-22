@@ -6,6 +6,8 @@
 <div id='container' style="display: inline-block;"></div>
 <div style="display: inline-block; vertical-align:top;">
   <div>duration: <em id="player_duration">0</em></div>
+  <div id="error_msg1" style="color: red;display: none;">none</div>
+  <div id="error_msg2" style="color: red;display: none;">none</div>
   <div>
     <select id="video_play_select" style="width:100px;height:30px">
         <option value="broardway">broardway</option>
@@ -438,6 +440,8 @@
               }
             }
           } catch (e) {
+            document.getElementById("error_msg1").style.display='block';
+            document.getElementById("error_msg1").innerHTML = "Error: no audio webcodecs support!";
             console.log(e)
             }
         }
@@ -470,7 +474,9 @@
               }
             }
           } catch (e) {
-            console.log(e)
+              console.log(e)
+              document.getElementById("error_msg1").style.display='block';
+              document.getElementById("error_msg1").innerHTML = "Error: no audio webcodecs support!";
             }
         }
       }
@@ -529,10 +535,16 @@
       attach_canvas(window.video_player.canvas)
     }
     else{
-      window.video_decoder = new VideoDecoder({
-        output: function(frame){ window.video_renderer_context.drawImage(frame, 0, 0); frame.close(); },
-        error: function(e) { console.log(e) }
-      })
+      try{
+        window.video_decoder = new VideoDecoder({
+          output: function(frame){ window.video_renderer_context.drawImage(frame, 0, 0); frame.close(); },
+          error: function(e) { console.log(e) }
+        })
+      } catch (e) {
+        document.getElementById("error_msg1").style.display='block';
+        document.getElementById("error_msg1").innerHTML = "Error: no video webcodecs support!";
+        throw e;
+      }
       if (window.query_param_dict['video_codec'] == 'h264'){
         window.video_player_feed = function(data){
           if (data[4]==103){
@@ -609,10 +621,13 @@
       window.ws = new WebSocket(ws_url)
       window.ws.binaryType = 'arraybuffer'
       window.ws.onopen = function (e) {
+          document.getElementById("error_msg2").style.display='none';
           window.player_start_date = new Date();
           console.log('ws:Client connected')
       }
       window.ws.onerror = function(e){
+        document.getElementById("error_msg2").style.display='block';
+        document.getElementById("error_msg2").innerHTML = "Client connect error";
         alert("Failed connect to device, maybe adb offline !!!");
       };
       window.ws.onmessage = function (msg) {
@@ -643,6 +658,8 @@
       window.ws.onclose = function (e) {
           window.player_start_date = null;
           console.log('ws: Client disconnected')
+          document.getElementById("error_msg2").style.display='block';
+          document.getElementById("error_msg2").innerHTML = "Client disconnected";
       }
    }
 </script>

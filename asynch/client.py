@@ -180,14 +180,23 @@ class DeviceClient:
                 await asyncio.sleep(0.01)
                 if self.session_id in self.recorder_tool.RECORDER_CLIENT_SOCKET:
                     self.recorder_socket = self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
-                    logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) success get recorder_socket")
+                    logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) recorder_success recorder_socket")
                     break
             else:
-                logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) error in get recorder_socket")
+                logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) recorder_error recorder_socket")
 
     async def send_to_recorder(self, data):
         if self.recorder_socket:
-            await self.recorder_socket.write(data)
+            try:
+                await self.recorder_socket.write(data)
+            except:
+                self.recorder_socket = None
+                del self.recorder_tool.RECORDER_CLIENT_SOCKET[self.session_id]
+                logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) recorder_error send_to_recorder")
+                try:
+                    os.remove(os.path.join(MEDIA_ROOT, 'video', f"{self.session_id}.{self.recorder_format}"))
+                except:
+                    pass
 
     async def stop_recorder(self):
         if self.recorder_socket:
