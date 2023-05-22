@@ -140,23 +140,37 @@ class DeviceClient:
                 frame_meta = await self.video_socket.read_exactly(12)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.video_socket.read_exactly(data_length)
-                # 2.向客户端发送当前nal
-                await self.ws_client.send(bytes_data=current_nal_data)
+                # 2.向录屏工具发送当前nal
                 await self.send_to_recorder(frame_meta+current_nal_data)
+                # 3.向前端发送当前nal
+                await self.ws_client.send(bytes_data=current_nal_data)
         finally:
             # 多次调用ws-close，有且只有一次会生效，所以ws-client的disconnect方法只会执行一次，即stop方法只执行一次
             await self.ws_client.close()
 
     async def _audio_task(self):
+        is_opus = self.scrcpy_kwargs['audio_codec'] == 'opus'
+        is_acc = self.scrcpy_kwargs['audio_codec'] == 'aac'
+        is_raw = self.scrcpy_kwargs['audio_codec'] == 'raw'
         try:
             while True:
                 # 1.读取frame_meta
                 frame_meta = await self.audio_socket.read_exactly(12)
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.audio_socket.read_exactly(data_length)
-                # 2.向客户端发送当前nal
-                await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
+                # 2.向录屏工具发送当前nal
                 await self.send_to_recorder(frame_meta + current_nal_data)
+                # 3.向前端发送当前nal
+                if is_opus:
+                    if len(current_nal_data) == 3 and current_nal_data == b'\xfc\xff\xfe':
+                        continue
+                elif is_raw:
+                    if current_nal_data.count(b'\x00') == len(current_nal_data):
+                        continue
+                elif is_acc:
+                    if current_nal_data.find(b'ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ')>=0:
+                        continue
+                await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
         finally:
             # 多次调用ws-close，有且只有一次会生效，所以ws-client的disconnect方法只会执行一次，即stop方法只执行一次
             await self.ws_client.close()

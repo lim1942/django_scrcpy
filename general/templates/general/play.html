@@ -11,6 +11,7 @@
   <div>
     <select id="video_play_select" style="width:100px;height:30px">
         <option value="broardway">broardway</option>
+        <option value="broardway2">broardway2</option>
         <option value="webcodecs">webcodecs</option>
     </select>
     <button id="reload_button">reload</button>
@@ -522,7 +523,7 @@
 
   function load_video_player(){
     window.canvas_resolution = [0, 0];
-    if (document.getElementById('video_play_select').value=='broardway'){
+    if (document.getElementById('video_play_select').value.startsWith('broardway')){
       window.video_player = new Player({ useWorker: true, webgl: 'auto', size: { width: 336, height: 720 }, workerFile: "/static/general/js/Decoder.js", preserveDrawingBuffer: true});
       window.video_player_feed = function(data){
         if (data[4]==103){
@@ -617,7 +618,16 @@
 </script>
 <script >
    function load_websocket(){
-      var ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.query_param
+      ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + window.query_param;
+      if (document.getElementById('video_play_select').value == 'broardway2'){
+        var broardway2_param_dict = Object.assign({}, window.query_param_dict);
+        delete broardway2_param_dict['video_codec_options'];
+        broardway2_query_param = "config=" + encodeURIComponent(JSON.stringify(broardway2_param_dict));
+        console.log(window.query_param);
+        console.log(broardway2_query_param);
+        ws_url = "ws://" + document.location.host + "/stream/device/" + "{{device_id}}" + "/?" + broardway2_query_param;
+        console.log("broardway2 video player use no video_codec_options!!!");
+      }
       window.ws = new WebSocket(ws_url)
       window.ws.binaryType = 'arraybuffer'
       window.ws.onopen = function (e) {
