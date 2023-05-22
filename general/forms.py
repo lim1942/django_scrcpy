@@ -14,7 +14,7 @@ class MobileForm(forms.ModelForm):
     video_codec_options = forms.CharField(label='视频codec参数', help_text="若无画面请尝试设置: profile=1,level=2", required=False)
     video_encoder = forms.CharField(label='视频codec_encoder', required=False, help_text="若无画面请尝试以下某一或者手机支持的其他encoder：OMX.google.h264.encoder | OMX.qcom.video.encoder.hevc | c2.android.hevc.encoder | c2.mtk.hevc.encoder")
     video_bit_rate = forms.IntegerField(label='视频比特率', help_text='800000, 此时视频比特率为800kbs', required=False)
-    max_fps = forms.IntegerField(label='视频帧率', help_text='25, 视频最大帧率为25', required=False)
+    max_fps = forms.IntegerField(label='视频帧率', help_text='设置视频最大帧率', required=False)
     audio_codec = forms.ChoiceField(label='音频codec', choices=AUDIO_CODEC_CHOICE, required=False)
     audio_codec_options = forms.CharField(label='音频codec参数', required=False)
     audio_encoder = forms.CharField(label='音频codec_encoder', required=False, help_text="若无音频请尝试以下某一或者手机支持的其他encoder：OMX.google.aac.encoder | c2.android.opus.encoder | c2.android.aac.encoder")
