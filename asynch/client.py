@@ -121,7 +121,6 @@ class DeviceClient:
             if accept_audio_encode == b'\x00\x00\x00\x00':
                 logging.error(f"【DeviceClient】({self.device_id}:{self.session_id}) open audio error, has Android >==11?")
                 self.scrcpy_kwargs['audio'] = False
-                await self.send_to_recorder(struct.pack(">L", 0))
                 await self.audio_socket.disconnect()
                 self.audio_socket = None
         else:
