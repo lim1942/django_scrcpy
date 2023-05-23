@@ -666,10 +666,12 @@
           }
       }
       window.ws.onclose = function (e) {
+        if(e.code != 1000){
           window.player_start_date = null;
           console.log('ws: Client disconnected')
           document.getElementById("error_msg2").style.display='block';
           document.getElementById("error_msg2").innerHTML = "Client disconnected";
+        }
       }
    }
 </script>
