@@ -149,9 +149,9 @@ class DeviceClient:
             await self.ws_client.close()
 
     async def _audio_task(self):
+        is_raw = self.scrcpy_kwargs['audio_codec'] == 'raw'
         is_opus = self.scrcpy_kwargs['audio_codec'] == 'opus'
         is_acc = self.scrcpy_kwargs['audio_codec'] == 'aac'
-        is_raw = self.scrcpy_kwargs['audio_codec'] == 'raw'
         try:
             while True:
                 # 1.读取frame_meta
@@ -161,15 +161,13 @@ class DeviceClient:
                 # 2.向录屏工具发送当前nal
                 await self.send_to_recorder(frame_meta + current_nal_data)
                 # 3.向前端发送当前nal
-                if is_opus:
-                    if len(current_nal_data) == 3 and current_nal_data == b'\xfc\xff\xfe':
-                        continue
-                elif is_raw:
-                    if current_nal_data.count(b'\x00') == len(current_nal_data):
-                        continue
-                elif is_acc:
-                    if current_nal_data.find(b'ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ')>=0:
-                        continue
+                # any(b'\x00\x00') is False
+                if is_raw and (not any(current_nal_data)): 
+                    continue
+                elif is_opus and (current_nal_data == b'\xfc\xff\xfe'):
+                    continue
+                elif is_acc and (current_nal_data.find(b'ZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZ')>=0):
+                    continue
                 await self.ws_client.send(bytes_data=format_audio_data(current_nal_data))
         finally:
             # 多次调用ws-close，有且只有一次会生效，所以ws-client的disconnect方法只会执行一次，即stop方法只执行一次
