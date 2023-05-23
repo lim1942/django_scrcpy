@@ -54,7 +54,7 @@ RECORDER_FORMAT = (
 )
 
 DEFAULT_SCRCPY_KWARGS = {
-    "recorder_enable": True if sys.platform.startswith('linux') else False,
+    "recorder_enable": False,
     "recorder_format": "mp4",
     # 1 scrcpy adb-socket-id, 用于手机区分多个启动的scrcpy。每次运行自动生成
     # "scid": -1,
