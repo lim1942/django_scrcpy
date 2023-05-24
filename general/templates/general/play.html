@@ -636,9 +636,7 @@
           console.log('ws:Client connected')
       }
       window.ws.onerror = function(e){
-        document.getElementById("error_msg2").style.display='block';
-        document.getElementById("error_msg2").innerHTML = "Client connect error";
-        alert("Failed connect to device, maybe adb offline !!!");
+        console.log("Failed connect to device, maybe adb offline !!!");
       };
       window.ws.onmessage = function (msg) {
           unit8_data = new Uint8Array(msg.data)
@@ -666,18 +664,19 @@
           }
       }
       window.ws.onclose = function (e) {
-        if(e.code != 1000){
-          window.player_start_date = null;
-          console.log('ws: Client disconnected')
-          document.getElementById("error_msg2").style.display='block';
-          document.getElementById("error_msg2").innerHTML = "Client disconnected";
-        }
+        window.player_start_date = null;
+        console.log('ws: Client disconnected')
+        document.getElementById("error_msg2").style.display='block';
+        document.getElementById("error_msg2").innerHTML = "Client disconnected";
       }
    }
 </script>
 <script>
     // reload
     function reload(){
+      window.ws.onclose = function (e) {
+        console.log('ws: Client disconnected')
+      }
       window.ws.close()
       document.getElementById("error_msg1").style.display='none';
       load_audio_player()
