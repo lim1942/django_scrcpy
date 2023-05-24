@@ -3,6 +3,10 @@
 import os
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_scrcpy.settings')
 try:
+    os.remove('db.sqlite3')
+except Exception as e:
+    pass
+try:
     from django.core.management import execute_from_command_line
 except ImportError as exc:
     raise ImportError(
