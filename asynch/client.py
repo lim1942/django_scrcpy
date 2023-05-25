@@ -273,7 +273,7 @@ class DeviceClient:
             logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) (5).start audio task")
             self.audio_task = asyncio.create_task(self._audio_task())
         # 6.check login task
-        self.video_task = asyncio.create_task(self.check_login_task())
+        # self.video_task = asyncio.create_task(self.check_login_task())
 
     async def stop(self):
         try:
