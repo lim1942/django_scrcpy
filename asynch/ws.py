@@ -1,14 +1,16 @@
+import re
 import uuid
 import asyncio
 import logging
 from urllib import parse
 
+from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 from asynch.client import DeviceClient
 from asynch.constants import sc_control_msg_type
 from asynch.serializers import ReceiveMsgObj, format_get_clipboard_data, format_set_clipboard_data
 
-
+    
 class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -17,7 +19,30 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.query_params = None
         self.device_client = None
 
+    async def check_login(self):
+        cookie_data = b''
+        for item in self.scope['headers']:
+            if item[0] == b'cookie':
+                cookie_data = item[1]
+        session_id_find = re.search(b'sessionid=(\w+)', cookie_data)
+        if session_id_find and session_id_find.group:
+            session_id = session_id_find.group(1)
+            from django.contrib.sessions.models import Session
+            try:
+                session = await database_sync_to_async(Session.objects.get)(session_key=session_id.decode())
+                return session.get_decoded()
+            except:
+                logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) has logout1 !!!")
+                await self.close()
+                return False            
+        else:
+            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) has logout2 !!!")
+            await self.close()
+            return False
+
     async def connect(self):
+        if not await self.check_login():
+            return
         # 1.获取请求参数
         self.query_params = parse.parse_qs(self.scope['query_string'].decode())
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
@@ -35,6 +60,8 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
+        if not await self.check_login():
+            return
         if not self.device_client.scrcpy_kwargs['control']:
             return
         obj = ReceiveMsgObj()
@@ -81,5 +108,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
             self.device_client.resolution = obj.resolution
 
     async def disconnect(self, code):
-        await self.device_client.stop()
+        if self.device_client:
+            await self.device_client.stop()
+            self.device_client = None
         logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) =======> disconnected")

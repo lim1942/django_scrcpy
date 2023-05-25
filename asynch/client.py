@@ -173,6 +173,15 @@ class DeviceClient:
             # 多次调用ws-close，有且只有一次会生效，所以ws-client的disconnect方法只会执行一次，即stop方法只执行一次
             await self.ws_client.close()
 
+    # check login state
+    async def check_login_task(self):
+        while True:
+            await asyncio.sleep(5)
+            if not await self.ws_client.check_login():
+                return
+            if not self.video_socket:
+                return
+
     async def handle_first_config_nal(self):
         # 1.video_config_packet
         frame_meta = await self.video_socket.read_exactly(12)
@@ -263,6 +272,8 @@ class DeviceClient:
         if self.scrcpy_kwargs['audio']:
             logging.info(f"【DeviceClient】({self.device_id}:{self.session_id}) (5).start audio task")
             self.audio_task = asyncio.create_task(self._audio_task())
+        # 6.check login task
+        self.video_task = asyncio.create_task(self.check_login_task())
 
     async def stop(self):
         try:
