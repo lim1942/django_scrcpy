@@ -153,7 +153,6 @@ REST_FRAMEWORK = {
     # 认证
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework.authentication.SessionAuthentication',
-        'rest_framework.authentication.BasicAuthentication'
     ],
     # 版本控制
     'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',

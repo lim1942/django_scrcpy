@@ -14,7 +14,7 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.viewsets import ReadOnlyModelViewSet, ModelViewSet
-from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.authentication import SessionAuthentication
 
 from general import adb
 from general import models
@@ -141,6 +141,7 @@ class VideoModelViewSet(ModelViewSet):
     lookup_field = 'video_id'
     queryset = models.Video.objects.all()
     serializer_class = serializers.VideoModelSerializer
+    permission_classes = (permissions.GeneralPermission,)
 
     @classmethod
     def file_iterator(cls, file_name, chunk_size=8192, offset=0, length=None):
@@ -198,7 +199,8 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
 class PictureModelViewSet(ModelViewSet):
     queryset = models.Picture.objects.all()
     serializer_class = serializers.PictureModelSerializer
-    authentication_classes = (BasicAuthentication, CsrfExemptSessionAuthentication)
+    authentication_classes = (CsrfExemptSessionAuthentication, )
+    permission_classes = (permissions.GeneralPermission,)
 
     @action(methods=['post'], detail=False, url_path='upload_base64')
     def upload_base64(self, request, *args, **kwargs):

@@ -153,7 +153,7 @@ class Controller:
                 break
             step += 1
         unit_delay = delay/step
-        await self.inject_touch_event(x, y, android_motionevent_action.AMOTION_EVENT_ACTION_DOWN)
+        await self.inject_touch_event(x, y, resolution, android_motionevent_action.AMOTION_EVENT_ACTION_DOWN)
         while True:
             if x > end_x:
                 x -= min(x-end_x, unit)
@@ -163,10 +163,10 @@ class Controller:
                 y -= min(y-end_y, unit)
             elif y < end_y:
                 y += min(end_y-y, unit)
-            await self.inject_touch_event(x, y, android_motionevent_action.AMOTION_EVENT_ACTION_MOVE)
+            await self.inject_touch_event(x, y, resolution, android_motionevent_action.AMOTION_EVENT_ACTION_MOVE)
             await asyncio.sleep(unit_delay)
             if x == end_x and y == end_y:
-                await self.inject_touch_event(x, y, android_motionevent_action.AMOTION_EVENT_ACTION_UP)
+                await self.inject_touch_event(x, y, resolution, android_motionevent_action.AMOTION_EVENT_ACTION_UP)
                 break
 
 
