@@ -20,7 +20,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.device_client = None
 
     async def check_login(self):
-        cookie_data = b''
+        cookie_data = ''
         for item in self.scope['headers']:
             if item[0] == b'cookie':
                 cookie_data = item[1].decode('utf-8')
