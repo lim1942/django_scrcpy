@@ -3,8 +3,8 @@ import struct
 import asyncio
 import datetime
 
+from asynch.tools.utils import AsyncSocket
 from django_scrcpy.settings import ADB_SERVER_ADDR, ADB_SERVER_PORT
-from asynch.nettool import AsyncSocket
 
 
 class AdbError(Exception):

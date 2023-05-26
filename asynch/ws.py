@@ -4,9 +4,9 @@ import asyncio
 import logging
 from urllib import parse
 
-from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
-from asynch.client import DeviceClient
+
+from asynch.device import DeviceClient
 from asynch.constants import sc_control_msg_type
 from asynch.serializers import ReceiveMsgObj, format_get_clipboard_data, format_set_clipboard_data
 
@@ -15,7 +15,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.device_id = None
-        self.session_id = None
+        self.ws_session_id = None
         self.query_params = None
         self.device_client = None
 
@@ -23,20 +23,20 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         cookie_data = b''
         for item in self.scope['headers']:
             if item[0] == b'cookie':
-                cookie_data = item[1]
-        session_id_find = re.search(b'sessionid=(\w+)', cookie_data)
+                cookie_data = item[1].decode('utf-8')
+        session_id_find = re.search(r'sessionid=(\w+)', cookie_data)
         if session_id_find and session_id_find.group:
             session_id = session_id_find.group(1)
             from django.contrib.sessions.models import Session
             try:
-                session = await database_sync_to_async(Session.objects.get)(session_key=session_id.decode())
+                session = await Session.objects.aget(session_key=session_id)
                 return session.get_decoded()
             except:
-                logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) has logout1 !!!")
+                logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) has logout1 !!!")
                 await self.close()
                 return False            
         else:
-            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) has logout2 !!!")
+            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) has logout2 !!!")
             await self.close()
             return False
 
@@ -44,19 +44,19 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         if not await self.check_login():
             return
         # 1.获取请求参数
-        self.query_params = parse.parse_qs(self.scope['query_string'].decode())
+        self.query_params = parse.parse_qs(self.scope['query_string'].decode('utf-8'))
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
-        self.session_id = uuid.uuid4().hex
+        self.ws_session_id = uuid.uuid4().hex
 
         # 2.获取当前ws_client对应的 device_client
         await self.accept()
-        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) =======> connected")
-        self.device_client = DeviceClient(self)
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) =======> connected")
+        self.device_client = DeviceClient(self, self.ws_session_id)
         try:
             await asyncio.wait_for(self.device_client.start(), 4)
         except Exception as e:
             await self.close()
-            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) start session error {type(e)}!!!")
+            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) start session error {type(e)}!!!")
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
@@ -109,4 +109,4 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         if self.device_client:
             await self.device_client.stop()
             self.device_client = None
-        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.session_id}) =======> disconnected")
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) =======> disconnected")
