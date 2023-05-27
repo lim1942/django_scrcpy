@@ -30,7 +30,7 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 > `adb devices` in command line can list connected device.    
 > _**List of devices attached**_   
 > **_ba406a9e0421    device_**  
-### 1.普通运行
+### 1.运行
 - download project
 - Install（项目升级时需要删除目录下db.sqlite文件，重新install）  
  `pip install -r requirements.txt`  
@@ -40,10 +40,10 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 ### 2.docker运行
 - run  
     - linux  
-    `docker run -it --name django_scrcpy --net=host -v some_dir:/usr/src/app/media lim1942/django_scrcpy:1.0`
+    `docker run -it --name django_scrcpy --net=host -v {some_dir}:/usr/src/app/media lim1942/django_scrcpy:1.0`
     - macos/windows  
-    **_ADB_SERVER_ADDR can be `docker.for.mac.localhost` `host.docker.internal` or your local interface `192.168.*.*`_**  
-    `docker run -it --name django_scrcpy -v some_dir:/usr/src/app/media -p 8000:8000 -e ADB_SERVER_ADDR=docker.for.mac.localhost -e ADB_SERVER_PORT=5037 lim1942/django_scrcpy:1.0`
+    `docker run -it --name django_scrcpy -v {some_dir}:/usr/src/app/media -p 8000:8000 -e ADB_SERVER_ADDR=docker.for.mac.localhost -e ADB_SERVER_PORT=5037 lim1942/django_scrcpy:1.0`  
+     *ADB_SERVER_ADDR can be "docker.for.mac.localhost" "host.docker.internal" "192.168.."*
 - start  
 `docker start django_scrcpy`
 - stop  
