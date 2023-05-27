@@ -166,5 +166,5 @@ REST_FRAMEWORK = {
 }
 
 # adb
-ADB_SERVER_ADDR = '127.0.0.1'
-ADB_SERVER_PORT = '5037'
+ADB_SERVER_ADDR =  os.environ.get('ADB_SERVER_ADDR') or '127.0.0.1'  
+ADB_SERVER_PORT = os.environ.get('ADB_SERVER_PORT') or '5037'
