@@ -16,6 +16,7 @@ RUN gcc asset/recorder.c -lavcodec  -lavformat -lavutil  -o asset/recorder.out
 RUN pip install -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 RUN pip cache purge
 RUN cp asset/db.sqlite3 ./db.sqlite3
+RUN python manage.py collectstatic --noinput
 
 # run
 CMD ["daphne", "django_scrcpy.asgi:application", "-b", "0.0.0.0", "-p", "8000"]

@@ -9,7 +9,7 @@ build_recorder:
 docker_build:
 	docker build . -t lim1942/django_scrcpy:1.0
 docker_run:
-	docker run -it --name django_scrcpy -p 8000:8000 -e ADB_SERVER_ADDR=docker.for.mac.localhost -e ADB_SERVER_ADDR=5037 lim1942/django_scrcpy:1.0
+	docker run -it --name django_scrcpy -p 8000:8000 -e ADB_SERVER_ADDR=docker.for.mac.localhost -e ADB_SERVER_PORT=5037 lim1942/django_scrcpy:1.0
 docker_start:
 	docker start django_scrcpy
 docker_stop:
