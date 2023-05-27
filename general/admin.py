@@ -88,12 +88,18 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         for obj in queryset:
             video_path = os.path.join(MEDIA_ROOT, 'video', f'{obj.video_id}.{obj.format}')
-            os.remove(video_path)
+            try:
+                os.remove(video_path)
+            except:
+                pass
         return super().delete_queryset(request, queryset)
     
     def delete_model(self, request: HttpRequest, obj: Any) -> None:
         video_path = os.path.join(MEDIA_ROOT, 'video', f'{obj.video_id}.{obj.format}')
-        os.remove(video_path)
+        try:
+            os.remove(video_path)
+        except:
+            pass
         return super().delete_model(request, obj)
 
     def download(self, obj):
@@ -128,10 +134,16 @@ class PictureAdmin(ExportActionMixin, admin.ModelAdmin):
     def delete_queryset(self, request: HttpRequest, queryset: QuerySet[Any]) -> None:
         for obj in queryset:
             picture_path = os.path.join(MEDIA_ROOT, 'picture', obj.picture.url.split('/')[-1])
-            os.remove(picture_path)
+            try:
+                os.remove(picture_path)
+            except:
+                pass
         return super().delete_queryset(request, queryset)
     
     def delete_model(self, request: HttpRequest, obj: Any) -> None:
         picture_path = os.path.join(MEDIA_ROOT, 'picture', obj.picture.url.split('/')[-1])
-        os.remove(picture_path)
+        try:
+            os.remove(picture_path)
+        except:
+            pass
         return super().delete_model(request, obj)
