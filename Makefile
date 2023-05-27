@@ -9,7 +9,7 @@ build_recorder:
 docker_build:
 	docker build . -t lim1942/django_scrcpy:1.0
 docker_run:
-	docker run -it --name django_scrcpy --net=host lim1942/django_scrcpy:1.0
+	docker run -it --name django_scrcpy -v media:/usr/src/app/media --net=host lim1942/django_scrcpy:1.0
 docker_start:
 	docker start django_scrcpy
 docker_stop:

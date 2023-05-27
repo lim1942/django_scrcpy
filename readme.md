@@ -40,9 +40,9 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 ### 2.docker运行
 - run  
     - linux  
-    `docker run -it --name django_scrcpy --net=host lim1942/django_scrcpy:1.0`
-    - macos  
-    `docker run -it --name django_scrcpy -p 8000:8000 -e ADB_SERVER_ADDR=docker.for.mac.localhost -e ADB_SERVER_PORT=5037 lim1942/django_scrcpy:1.0`
+    `docker run -it --name django_scrcpy --net=host -v media:/usr/src/app/media lim1942/django_scrcpy:1.0`
+    - macos/windows  
+    `docker run -it --name django_scrcpy -v media:/usr/src/app/media -p 8000:8000 -e ADB_SERVER_ADDR=docker.for.mac.localhost -e ADB_SERVER_PORT=5037 lim1942/django_scrcpy:1.0`
 - start  
 `docker start django_scrcpy`
 - stop  
