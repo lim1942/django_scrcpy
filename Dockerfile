@@ -1,10 +1,10 @@
-From python:3.7.16
+FROM python:3.7.16
 
 # copy files
 WORKDIR /usr/src/app
 COPY . .
 
-#  recoder
+#  recorder
 RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN sed -i s@/deb.debian.org/@/mirrors.aliyun.com/@g /etc/apt/sources.list 
 RUN apt-get clean && apt update
@@ -19,4 +19,6 @@ RUN cp asset/db.sqlite3 ./db.sqlite3
 RUN python manage.py collectstatic --noinput
 
 # run
-CMD ["daphne", "django_scrcpy.asgi:application", "-b", "0.0.0.0", "-p", "8000"]
+ENV DJANGO_SCRCPY_ADDR 0.0.0.0
+ENV DJANGO_SCRCPY_PORT 8000
+CMD daphne django_scrcpy.asgi:application -b $DJANGO_SCRCPY_ADDR -p $DJANGO_SCRCPY_PORT
