@@ -6,9 +6,9 @@ COPY . .
 
 #  recorder
 RUN sed -i s@/archive.ubuntu.com/@/mirrors.aliyun.com/@g /etc/apt/sources.list
-RUN sed -i s@/deb.debian.org/@/mirrors.aliyun.com/@g /etc/apt/sources.list 
+RUN sed -i s@/deb.debian.org/@/mirrors.aliyun.com/@g /etc/apt/sources.list
 RUN apt-get clean && apt update
-RUN apt install -y gcc libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev libswresample-dev 
+RUN apt install -y gcc libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev libswresample-dev
 RUN apt-get clean all
 RUN gcc asset/recorder.c -lavcodec  -lavformat -lavutil  -o asset/recorder.out
 
