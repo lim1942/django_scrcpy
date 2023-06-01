@@ -23,7 +23,8 @@ Backend scrcpy_server.jar grab android-device screen-raw-h264 data.
 Transmission based on websocket (Django efficiently asynchronous coroutine).  
 Frontend broardway.js play screen-raw-h264 data, capture mouse`s event to control.
 We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.  
-- **webcodecs 解码部分参照了项目 https://github.com/yume-chan/ya-webadb**
+- **Django_scrcpy base on scrcpy https://github.com/Genymobile/scrcpy**
+- **Webcodecs Inspired by https://github.com/yume-chan/ya-webadb**
 
 # 三.运行(Usage)：
 >Make sure adb server started and android-device(in Developer Mode) has connected to adb server.  
