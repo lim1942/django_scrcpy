@@ -1,7 +1,7 @@
 # 一.简介(What we can do)
 ![](https://img.shields.io/badge/windows-grey)
 ![](https://img.shields.io/badge/linux-grey)
-![](https://img.shields.io/badge/python-3.7-green)  
+![](https://img.shields.io/badge/python-3.10-green)  
 手机web投屏和操控，支持音频，提供一个配置管理页用于配置各设备的投屏参数(帧率，尺寸等),支持多设备。  
 Android Device remote display and control in browser page.audio support   
 Provide manage site to configure display(frame-rate,screen-size,bit-rate), support multi devices.  
