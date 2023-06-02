@@ -137,3 +137,5 @@ nohup.out
 *.mkv
 *.out
 /.vscode
+/extensions/src/
+/extensions/build/
