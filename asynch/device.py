@@ -16,7 +16,7 @@ from django_scrcpy.settings import MEDIA_ROOT, BASE_DIR
 from asynch.constants import sc_control_msg_type, sc_copy_key, sc_screen_power_mode
 from asynch.constants.input import android_metastate, android_keyevent_action, android_motionevent_action, \
     android_motionevent_buttons
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:%(message)s', level=logging.INFO)
 
 
 class DeviceRecorder:

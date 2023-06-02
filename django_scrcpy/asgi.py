@@ -7,6 +7,7 @@ For more information on this file, see
 https://docs.djangoproject.com/en/3.2/howto/deployment/asgi/
 """
 import os
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_scrcpy.settings')
 from concurrent.futures import ThreadPoolExecutor
 
 from channels.routing import ProtocolTypeRouter, URLRouter
@@ -16,7 +17,6 @@ from asgiref.sync import SyncToAsync
 from asynch import urls
 
 SyncToAsync.single_thread_executor = ThreadPoolExecutor(max_workers=5)
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'django_scrcpy.settings')
 
 
 django_asgi_app = get_asgi_application()

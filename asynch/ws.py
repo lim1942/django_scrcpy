@@ -9,9 +9,9 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 from asynch.device import DeviceClient
 from asynch.constants import sc_control_msg_type
 from asynch.serializers import ReceiveMsgObj, format_get_clipboard_data, format_set_clipboard_data
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:%(message)s', level=logging.INFO)
 
-    
+
 class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
