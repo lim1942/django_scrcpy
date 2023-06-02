@@ -1,4 +1,4 @@
-FROM python:3.7.16
+FROM python:3.10.11
 
 # copy files
 WORKDIR /usr/src/app
@@ -21,4 +21,4 @@ RUN python manage.py collectstatic --noinput
 # run
 ENV DJANGO_SCRCPY_ADDR 0.0.0.0
 ENV DJANGO_SCRCPY_PORT 8000
-CMD daphne django_scrcpy.asgi:application -b $DJANGO_SCRCPY_ADDR -p $DJANGO_SCRCPY_PORT
+CMD uvicorn django_scrcpy.asgi:application --host $DJANGO_SCRCPY_ADDR --port $DJANGO_SCRCPY_PORT
