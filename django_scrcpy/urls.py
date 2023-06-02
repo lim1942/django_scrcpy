@@ -26,5 +26,6 @@ urlpatterns = [
     re_path('^static/(?P<path>.*)$', serve, {'document_root': STATIC_ROOT}),
     re_path('^media/(?P<path>.*)$', serve, {'document_root': MEDIA_ROOT}),
     path('api/<str:version>/general/', include('general.urls')),
+    path('asynch/', include('asynch.urls')),
     path('admin/', admin.site.urls),
 ]
