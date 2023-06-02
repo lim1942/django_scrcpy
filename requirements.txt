@@ -8,3 +8,4 @@ uvicorn[standard]
 pytz
 aiofiles
 django-ninja
+daphne
