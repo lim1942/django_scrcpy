@@ -5,9 +5,9 @@ from Cython.Build import cythonize
 
 ext_modules = Extension("recorder",
               sources=["recorder.pyx"],
-              include_dirs=[],
-              library_dirs=[],
-              libraries=["m", "avformat", "avcodec","avdevice","avutil","avfilter","swscale", "swresample"])
+              include_dirs=[r"D:\Program Files\ffmpeg\include"],
+              library_dirs=[r"D:\Program Files\ffmpeg\lib"],
+              libraries=["avformat", "avcodec","avutil"])
 
 compiler_directives=dict(
             c_string_type="unicode",

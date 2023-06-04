@@ -42,8 +42,6 @@ class MobileForm(forms.ModelForm):
         # update config_dict by form fields
         config_dict.update({field: self.cleaned_data[field] for field in self.cleaned_data if field in config_dict})
         # valid mp4 video recorder
-        if (not sys.platform.startswith('linux')) and config_dict['recorder_enable']:
-            raise forms.ValidationError("recording: only linux deploy can recording!!!")
         if (config_dict['recorder_enable']) and (config_dict['recorder_format'] == 'mp4') and (config_dict['audio_codec'] != 'aac'):
             raise forms.ValidationError("recording: mp4 audio_codec only support aac!!!")
         # restore config_dict to config str

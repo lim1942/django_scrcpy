@@ -357,8 +357,8 @@ class DeviceClient:
 
     def start_recorder(self):
         if self.recorder_enable:
-            from extension.recorder import Recorder
             try:
+                from extension.recorder import Recorder
                 self.recorder = Recorder(self.recorder_format, self.recorder_filename, self.scrcpy_kwargs['audio'])
                 assert self.recorder.add_video_stream(self.video_audio_info['video_encode'], self.video_audio_info['width'], self.video_audio_info['height'])
                 assert self.recorder.write_video_header(*self.video_audio_info['video_header'])
