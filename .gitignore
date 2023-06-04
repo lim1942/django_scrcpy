@@ -140,3 +140,4 @@ nohup.out
 /extension/src/
 /extension/build/
 *.h264
+*.dll
