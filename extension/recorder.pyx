@@ -219,6 +219,7 @@ cdef class Recorder(object):
             duration = <int> ((self.pts_last - self.pts_origin)/1000000)
         avio_close(self.container.pb)
         avformat_free_context(self.container)
+        self.container.pb = NULL
         return duration
         
     def __dealloc__(self):
@@ -236,3 +237,7 @@ cdef class Recorder(object):
             av_packet_free(&self.audio_packet)
         # 3.free merger
         self.packet_merger_destroy()
+        # 4.free container
+        if self.container.pb != NULL:
+            avio_close(self.container.pb)
+            avformat_free_context(self.container)
