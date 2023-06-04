@@ -135,3 +135,7 @@ nohup.out
 *.mkv
 *.out
 /.vscode
+/extension/src/
+/extension/build/
+*.h264
+*.dll

@@ -10,6 +10,7 @@ cdef const AVOutputFormat* find_muxer(const char *name):
     cdef const AVOutputFormat *oformat = NULL
     cdef void *opaque = NULL
     while True:
+        oformat = av_muxer_iterate(&opaque)
         if HIGH_API:
              oformat = av_muxer_iterate(&opaque)
         else:
@@ -186,8 +187,8 @@ cdef class Recorder(object):
                 if av_interleaved_write_frame(self.container, self.previous_video_packet)<0:
                     return False
                 av_packet_free(&self.previous_video_packet)
-            self.previous_video_packet = av_packet_clone(self.video_packet)
-            av_packet_free(&self.video_packet)
+            self.previous_video_packet = self.video_packet
+            self.video_packet = NULL
             return True
 
     cpdef bint write_audio_packet(self, const uint8_t *pts, int length, const uint8_t *data) except False:
