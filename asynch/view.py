@@ -55,6 +55,7 @@ async def video_stream(request, filename: str) -> str:
         content_type = 'application/octet-stream'
         resp = StreamingHttpResponse(file_iterator(filename), content_type=content_type)
         resp['Content-Length'] = str(size)
+        resp['Content-Disposition'] = 'attachment;filename="%s"' % os.path.basename(filename)
     resp.is_async = True
     resp['Accept-Ranges'] = 'bytes'
     return resp
