@@ -46,6 +46,8 @@ cdef extern from "libavformat/avformat.h" nogil:
         AVStream **streams
         int64_t duration
 
+    cdef void av_register_all()
+
     cdef AVFormatContext* avformat_alloc_context()
 
     cdef const AVOutputFormat* av_muxer_iterate(void **opaque)
@@ -130,6 +132,8 @@ cdef extern from "libavcodec/avcodec.h" nogil:
 
     cdef void av_packet_free(AVPacket **pkt)
 
+    cdef void avcodec_free_context(AVCodecContext **avctx)
+
     cdef void av_packet_rescale_ts(AVPacket *pkt, AVRational src_tb, AVRational dst_tb)
 
 
@@ -142,16 +146,18 @@ cdef struct video_packet_merger:
     
 
 cdef class Recorder(object):
+    cdef bint has_audio
+    cdef int64_t pts_origin
+    cdef int64_t pts_last
     cdef long start_time
-    cdef long  finish_time
+    cdef long finish_time
     cdef AVPacket *previous_video_packet
     cdef AVPacket *video_packet
     cdef AVPacket *audio_packet
     cdef AVFormatContext *container
-    cdef bint has_audio
+    cdef AVCodecContext *video_codec_ctx
+    cdef AVCodecContext *audio_codec_ctx
     cdef video_packet_merger merger
-    cdef int64_t pts_origin
-    cdef int64_t pts_last
 
     cdef uint32_t read32be(self, const uint8_t *data)
 
@@ -167,18 +173,18 @@ cdef class Recorder(object):
 
     cdef AVCodecID get_avcodec_id(self, const uint8_t *codec_name)
 
-    cpdef void add_video_stream(self, const uint8_t *codec_name, const uint8_t *width, const uint8_t *height)
+    cpdef bint add_video_stream(self, const uint8_t *codec_name, const uint8_t *width, const uint8_t *height) except False
 
-    cpdef void add_audio_stream(self, const uint8_t *codec_name)
+    cpdef bint add_audio_stream(self, const uint8_t *codec_name) except False
 
-    cpdef void write_video_header(self, const uint8_t *pts, int length, const uint8_t *data)
+    cpdef bint write_video_header(self, const uint8_t *pts, int length, const uint8_t *data) except False
 
-    cpdef void write_audio_header(self, const uint8_t *pts, int length, const uint8_t *data)
+    cpdef bint write_audio_header(self, const uint8_t *pts, int length, const uint8_t *data) except False
 
-    cpdef void write_header(self)
+    cpdef bint write_header(self) except False
 
-    cpdef void write_video_packet(self, const uint8_t *pts, int length, const uint8_t *data)
+    cpdef bint write_video_packet(self, const uint8_t *pts, int length, const uint8_t *data) except False
 
-    cpdef void write_audio_packet(self, const uint8_t *pts, int length, const uint8_t *data)
+    cpdef bint write_audio_packet(self, const uint8_t *pts, int length, const uint8_t *data) except False
 
-    cpdef int close_container(self)
+    cpdef int close_container(self) except 0

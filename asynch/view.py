@@ -1,24 +1,60 @@
-import asyncio
+import os
+import re
 
+import mimetypes
 import aiofiles
-from django.http import HttpResponse, StreamingHttpResponse,FileResponse
-from django.views import View
+from ninja import NinjaAPI
+
+from django.shortcuts import render
+from django.urls import reverse
+from django.http import StreamingHttpResponse
+
+api = NinjaAPI(urls_namespace='asynch')
 
 
-async def file_iter(filename):
-    async with aiofiles.open(filename, 'rb') as f:
-        while True:
-            chunk = await f.read(65536)
-            if not chunk:
-                break
-            yield chunk
+async def file_iterator(file_name, chunk_size=8192*100, offset=0, length=None):
+        async with aiofiles.open(file_name, "rb") as f:
+            await f.seek(offset)
+            remaining = length
+            while True:
+                bytes_length = chunk_size if remaining is None else min(remaining, chunk_size)
+                data = await f.read(bytes_length)
+                if not data:
+                    break
+                if remaining:
+                    remaining -= len(data)
+                yield data
 
 
-class AsyncView(View):
-    async def get(self, request, *args, **kwargs):
-        # Perform io-blocking view logic using await, sleep for example.
-        iter_content = file_iter('/mnt/sdb1/develop/project/django_scrcpy/media/video/4de638df4afa4de99b7db7170ac38663.mp4')
-        response = StreamingHttpResponse(streaming_content=iter_content, content_type='application/octet-stream')
-        response['Content-Disposition'] = 'attachment;filename="test.mp4"'
-        response.is_async = True
-        return response
+@api.get("/video/play", url_name='video-play')
+async def video_play(request, filename: str) ->str:
+    play_url = reverse("asynch:video-stream") + f"?filename={filename}"
+    kwargs = {"filename": filename.split('/')[-1], "play_url": play_url}
+    return render(request, "asynch/video_play.html", kwargs)
+
+
+@api.get("/video/stream", url_name='video-stream')
+async def video_stream(request, filename: str) -> str:
+    range_header = request.META.get('HTTP_RANGE', '').strip()
+    range_re = re.compile(r'bytes\s*=\s*(\d+)\s*-\s*(\d*)', re.I)
+    range_match = range_re.match(range_header)
+    size = os.path.getsize(filename)
+    if range_match:
+        content_type, encoding = mimetypes.guess_type(filename)
+        content_type = content_type or 'application/octet-stream'
+        first_byte, last_byte = range_match.groups()
+        first_byte = int(first_byte) if first_byte else 0
+        last_byte = first_byte + 1024 * 1024 * 8  # 8M 每片,响应体最大体积
+        if last_byte >= size:
+            last_byte = size - 1
+        length = last_byte - first_byte + 1
+        resp = StreamingHttpResponse(file_iterator(filename, offset=first_byte, length=length), status=206, content_type=content_type)
+        resp['Content-Length'] = str(length)
+        resp['Content-Range'] = 'bytes %s-%s/%s' % (first_byte, last_byte, size)
+    else:
+        content_type = 'application/octet-stream'
+        resp = StreamingHttpResponse(file_iterator(filename), content_type=content_type)
+        resp['Content-Length'] = str(size)
+    resp.is_async = True
+    resp['Accept-Ranges'] = 'bytes'
+    return resp

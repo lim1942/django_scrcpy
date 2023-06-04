@@ -6,7 +6,6 @@ import logging
 import asyncio
 import datetime
 
-from extension.recorder import Recorder
 from asynch.tools.adb import AsyncAdbDevice
 from asynch.serializers import format_audio_data
 from django_scrcpy.settings import MEDIA_ROOT, BASE_DIR
@@ -358,14 +357,15 @@ class DeviceClient:
 
     def start_recorder(self):
         if self.recorder_enable:
+            from extension.recorder import Recorder
             try:
                 self.recorder = Recorder(self.recorder_format, self.recorder_filename, self.scrcpy_kwargs['audio'])
-                self.recorder.add_video_stream(self.video_audio_info['video_encode'], self.video_audio_info['width'], self.video_audio_info['height'])
-                self.recorder.write_video_header(*self.video_audio_info['video_header'])
+                assert self.recorder.add_video_stream(self.video_audio_info['video_encode'], self.video_audio_info['width'], self.video_audio_info['height'])
+                assert self.recorder.write_video_header(*self.video_audio_info['video_header'])
                 if self.video_audio_info.get('audio_encoder'):
-                    self.recorder.add_audio_stream(self.video_audio_info['audio_encoder'])
-                    self.recorder.write_audio_header(*self.video_audio_info['audio_header'])
-                self.recorder.write_header()
+                    assert self.recorder.add_audio_stream(self.video_audio_info['audio_encoder'])
+                    assert self.recorder.write_audio_header(*self.video_audio_info['audio_header'])
+                assert self.recorder.write_header()
             except Exception as e:
                 logging.error(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) recorder_error start_recorder {type(e)}: {str(e)}")
                 del self.recorder
@@ -375,9 +375,9 @@ class DeviceClient:
         if self.recorder:
             try:
                 if typ == 'video':
-                    self.recorder.write_video_packet(*args)
+                    assert self.recorder.write_video_packet(*args)
                 else:
-                    self.recorder.write_audio_packet(*args)
+                    assert self.recorder.write_audio_packet(*args)
             except Exception as e:
                 logging.error(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) recorder_error write_recoder {type(e)}: {str(e)}")
                 del self.recorder
@@ -388,6 +388,7 @@ class DeviceClient:
             try:
                 from general.models import Video
                 duration = self.recorder.close_container()
+                assert duration
                 data = dict(
                     video_id=self.ws_session_id,
                     device_id=self.device_id,

@@ -109,7 +109,8 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     download.short_description = '下载'
 
     def video_play(self, obj):
-        video_play_url = reverse("video-play", kwargs={"video_id": obj.video_id, "version": "v1"})
+        filename = os.path.join(MEDIA_ROOT, "video", f"{obj.video_id}.{obj.format}")
+        video_play_url = reverse("asynch:video-play") + f"?filename={filename}"
         return mark_safe(f'<a href="{video_play_url}" target="_blank">访问</a>')
     video_play.short_description = '播放'
 
