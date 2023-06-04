@@ -139,3 +139,4 @@ nohup.out
 /.vscode
 /extension/src/
 /extension/build/
+*.h264

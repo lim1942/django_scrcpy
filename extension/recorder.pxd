@@ -1,6 +1,7 @@
 from libc.stdint cimport int64_t, uint64_t, uint32_t, uint8_t, UINT_LEAST32_MAX
 from libc.string cimport memcpy, memmove
 from libc.stdlib cimport malloc, free
+from libc.time cimport time
 
 
 cdef extern from "libavutil/avutil.h" nogil:
@@ -141,8 +142,8 @@ cdef struct video_packet_merger:
     
 
 cdef class Recorder(object):
-    cdef start_time
-    cdef finish_time
+    cdef long start_time
+    cdef long  finish_time
     cdef AVPacket *previous_video_packet
     cdef AVPacket *video_packet
     cdef AVPacket *audio_packet

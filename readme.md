@@ -37,7 +37,7 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
  `pip install -r requirements.txt`  
  `python init.py`
 - Run（Visit http://127.0.0.1:8000/admin）  
-`uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000`
+`uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000 --workers 4`
 ### 2.docker运行
 - run  
     - linux  
@@ -67,4 +67,4 @@ only support linux, test in ubuntu.
 ### 2.编译录屏工具
 `gcc asset/recorder.c -lavcodec  -lavformat -lavutil  -o asset/recorder.out`
 ### 3.运行
-`uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000`
+`uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000 --workers 4`

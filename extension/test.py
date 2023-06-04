@@ -28,3 +28,5 @@ while True:
         break
 
 print(recorder_obj.close_container())
+print(recorder_obj.start_time)
+print(recorder_obj.finish_time)

@@ -1,9 +1,6 @@
-import datetime
-
-
-DEF SC_PACKET_FLAG_CONFIG = (1 << 63)
-DEF SC_PACKET_FLAG_KEY_FRAME = (1 << 62)
-DEF SC_PACKET_PTS_MASK = (SC_PACKET_FLAG_KEY_FRAME - 1)
+cdef uint64_t SC_PACKET_FLAG_CONFIG = (1 << 63)
+cdef uint64_t SC_PACKET_FLAG_KEY_FRAME = (1 << 62)
+cdef uint64_t SC_PACKET_PTS_MASK = (SC_PACKET_FLAG_KEY_FRAME - 1)
 cdef AVRational RECORD_TIME_BASE = {"num":1, "den":1000000}
 
 
@@ -16,7 +13,7 @@ cdef const AVOutputFormat* find_muxer(const char *name):
              oformat = av_muxer_iterate(&opaque)
         else:
             oformat = av_oformat_next(oformat)
-        if (not oformat) or (name in oformat.name.split(',')):
+        if (not oformat) or (name in oformat.name):
             break
     return oformat
 
@@ -32,10 +29,7 @@ cdef class Recorder(object):
         self.has_audio  = has_audio
         self.pts_origin = AV_NOPTS_VALUE
         self.pts_last  = AV_NOPTS_VALUE
-
-    def __init__(self, *arg, **kwargs) -> None:
-        self.start_time = datetime.datetime.now()
-        self.finish_time = None
+        self.start_time = <long> time(NULL)
 
     @property
     def start_time(self):
@@ -218,5 +212,5 @@ cdef class Recorder(object):
             print("recorder.c: Failed to write trailer")
         avio_close(self.container.pb)
         avformat_free_context(self.container)
-        self.finish_time = datetime.datetime.now()
+        self.finish_time = <long> time(NULL)
         return <int> ((self.pts_last - self.pts_origin)/1000000)
