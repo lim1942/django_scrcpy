@@ -1,5 +1,5 @@
 from libc.stdint cimport int64_t, uint64_t, uint32_t, uint8_t, UINT_LEAST32_MAX
-from libc.string cimport memcpy, memmove
+from libc.string cimport memcpy, memmove, strcmp
 from libc.stdlib cimport malloc, free
 from libc.time cimport time
 from cpython.buffer cimport PyBUF_SIMPLE, PyBuffer_Release, PyObject_CheckBuffer, PyObject_GetBuffer
@@ -166,8 +166,6 @@ cdef class Recorder(object):
     cdef AVCodecContext *audio_codec_ctx
     cdef video_packet_merger merger
 
-    cdef void init_packet(self, AVPacket * packet, uint64_t pts, int length, const uint8_t *data)
-
     cdef void packet_merger_init(self)
 
     cdef void packet_merger_merge(self, AVPacket *packet)
@@ -175,19 +173,3 @@ cdef class Recorder(object):
     cdef void packet_merger_destroy(self)
 
     cdef AVCodecID get_avcodec_id(self, char *codec_name)
-
-    cpdef bint add_video_stream(self, char *codec_name, int width, int height) except False
-
-    cpdef bint add_audio_stream(self, char *codec_name) except False
-
-    cpdef bint write_video_header(self, uint64_t pts, int length, const uint8_t *data) except False
-
-    cpdef bint write_audio_header(self, uint64_t pts, int length, const uint8_t *data) except False
-
-    cpdef bint write_header(self) except False
-
-    cpdef bint write_video_packet(self, uint64_t pts, int length, const uint8_t *data) except False
-
-    cpdef bint write_audio_packet(self, uint64_t pts, int length, const uint8_t *data) except False
-
-    cpdef int close_container(self) except 0

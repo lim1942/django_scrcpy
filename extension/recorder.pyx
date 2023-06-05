@@ -5,23 +5,15 @@ cdef AVRational RECORD_TIME_BASE = {"num":1, "den":1000000}
 
 
 cdef class ByteSource(object):
-    def __cinit__(self, owner):
-        self.owner = owner
-        try:
-            self.ptr = owner
-        except TypeError:
-            pass
-        else:
-            self.length = len(owner)
+    def __cinit__(self, data):
+        self.ptr = data
+        # Can very likely use PyBUF_ND instead of PyBUF_SIMPLE
+        res = PyObject_GetBuffer(data, &self.view, PyBUF_SIMPLE)
+        if not res:
+            self.has_view = True
+            self.ptr = <unsigned char *>self.view.buf
+            self.length = self.view.len
             return
-        if PyObject_CheckBuffer(owner):
-            # Can very likely use PyBUF_ND instead of PyBUF_SIMPLE
-            res = PyObject_GetBuffer(owner, &self.view, PyBUF_SIMPLE)
-            if not res:
-                self.has_view = True
-                self.ptr = <unsigned char *>self.view.buf
-                self.length = self.view.len
-                return
         raise TypeError('expected bytes, bytearray or memoryview')
 
     def __dealloc__(self):
@@ -63,17 +55,6 @@ cdef class Recorder(object):
     def finish_time(self):
         return self.finish_time   
 
-    cdef void init_packet(self, AVPacket * packet, uint64_t pts, int length, const uint8_t *data):
-        av_new_packet(packet, length)
-        memcpy(packet.data, data, packet.size)
-        if (SC_PACKET_FLAG_CONFIG & pts):
-            packet.pts = AV_NOPTS_VALUE
-        else:
-            packet.pts = pts & SC_PACKET_PTS_MASK
-        if pts & SC_PACKET_FLAG_KEY_FRAME:
-            packet.flags |=  AV_PKT_FLAG_KEY
-        packet.dts = packet.pts
-
     cdef void packet_merger_init(self):
         self.merger.config = NULL
 
@@ -99,22 +80,22 @@ cdef class Recorder(object):
         free(self.merger.config)
     
     cdef AVCodecID get_avcodec_id(self, char *codec_name,):
-        if codec_name == "h264":
+        if strcmp(codec_name, "h264")==0:
             return AVCodecID.AV_CODEC_ID_H264
-        elif codec_name == "h265":
+        elif strcmp(codec_name, "h265")==0:
             return AVCodecID.AV_CODEC_ID_HEVC
-        elif codec_name == "av1":
+        elif strcmp(codec_name, "av1")==0:
             return AVCodecID.AV_CODEC_ID_AV1            
-        elif codec_name == "opus":
+        elif strcmp(codec_name, "opus")==0:
             return AVCodecID.AV_CODEC_ID_OPUS
-        elif codec_name == "aac":
+        elif strcmp(codec_name, "aac")==0:
             return AVCodecID.AV_CODEC_ID_AAC
-        elif codec_name == "raw":
+        elif strcmp(codec_name, "raw")==0:
             return AVCodecID.AV_CODEC_ID_PCM_S16LE
         else:
             return AVCodecID.AV_CODEC_ID_NONE
 
-    cpdef bint add_video_stream(self, char *codec_name, int width, int height) except False:
+    def add_video_stream(self, char *codec_name, int width, int height):
         # 1.get codec id 
         cdef  AVCodecID video_codec_id = self.get_avcodec_id(codec_name)
         # 2.get codec and set codec_ctx
@@ -131,7 +112,7 @@ cdef class Recorder(object):
         avcodec_parameters_from_context(video_stream.codecpar, self.video_codec_ctx)
         return True
         
-    cpdef bint add_audio_stream(self, char *codec_name) except False:
+    def add_audio_stream(self, char *codec_name):
         # 1.get codec id 
         cdef  AVCodecID audio_codec_id = self.get_avcodec_id(codec_name)
         # 2.get codec and set codec_ctx
@@ -148,10 +129,24 @@ cdef class Recorder(object):
         avcodec_parameters_from_context(audio_stream.codecpar, self.audio_codec_ctx)
         return True
 
-    cpdef bint write_video_header(self, uint64_t pts, int length, const uint8_t *data) except False:
+    def init_packet(self, bint is_video, uint64_t pts, int length, object data):
+        packet = self.video_packet if is_video else self.audio_packet
+        av_new_packet(packet, length)
+        byte_source = ByteSource(data)
+        memcpy(packet.data, byte_source.ptr, packet.size)
+        del byte_source
+        if (SC_PACKET_FLAG_CONFIG & pts):
+            packet.pts = AV_NOPTS_VALUE
+        else:
+            packet.pts = pts & SC_PACKET_PTS_MASK
+        if pts & SC_PACKET_FLAG_KEY_FRAME:
+            packet.flags |=  AV_PKT_FLAG_KEY
+        packet.dts = packet.pts
+
+    def write_video_header(self, uint64_t pts, int length, object data):
         self.video_packet = av_packet_alloc()
         self.packet_merger_init()
-        self.init_packet(self.video_packet, pts, length, data)
+        self.init_packet(True, pts, length, data)
         self.packet_merger_merge(self.video_packet)
         cdef uint8_t *extradata = <uint8_t *> av_malloc(self.video_packet.size * sizeof(uint8_t))
         memcpy(extradata, self.video_packet.data, self.video_packet.size)
@@ -160,9 +155,9 @@ cdef class Recorder(object):
         av_packet_free(&self.video_packet)
         return True
 
-    cpdef bint write_audio_header(self, uint64_t pts, int length, const uint8_t *data) except False:
+    def write_audio_header(self, uint64_t pts, int length, object data):
         self.audio_packet = av_packet_alloc()
-        self.init_packet(self.audio_packet, pts, length, data)
+        self.init_packet(False, pts, length, data)
         cdef uint8_t *extradata = <uint8_t *> av_malloc(self.audio_packet.size * sizeof(uint8_t))
         memcpy(extradata, self.audio_packet.data, self.audio_packet.size)
         self.container.streams[1].codecpar.extradata = extradata
@@ -170,12 +165,12 @@ cdef class Recorder(object):
         av_packet_free(&self.audio_packet)
         return True
 
-    cpdef bint write_header(self) except False:
+    def write_header(self):
         return (avformat_write_header(self.container, NULL) >= 0)
 
-    cpdef bint write_video_packet(self, uint64_t pts, int length, const uint8_t *data) except False:
+    def write_video_packet(self, uint64_t pts, int length, object data):
         self.video_packet = av_packet_alloc()
-        self.init_packet(self.video_packet, pts, length, data)
+        self.init_packet(True, pts, length, data)
         if self.pts_origin == AV_NOPTS_VALUE:
             self.pts_origin = self.video_packet.pts
         # config packet
@@ -198,9 +193,9 @@ cdef class Recorder(object):
             self.video_packet = NULL
             return True
 
-    cpdef bint write_audio_packet(self, uint64_t pts, int length, const uint8_t *data) except False:
+    def write_audio_packet(self, uint64_t pts, int length, object data):
         self.audio_packet = av_packet_alloc()
-        self.init_packet(self.audio_packet, pts, length, data)
+        self.init_packet(False, pts, length, data)
         if self.pts_origin == AV_NOPTS_VALUE:
             self.pts_origin = self.audio_packet.pts
         self.audio_packet.stream_index = 1
@@ -212,7 +207,7 @@ cdef class Recorder(object):
         av_packet_free(&self.video_packet)
         return True
 
-    cpdef int close_container(self) except 0:
+    def close_container(self):
         cdef int duration
         if self.previous_video_packet:
             self.previous_video_packet.duration = 100000
