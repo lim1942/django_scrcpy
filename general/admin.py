@@ -17,6 +17,7 @@ from django_scrcpy.settings import MEDIA_ROOT
 
 @admin.register(models.Mobile)
 class MobileAdmin(ExportActionMixin, admin.ModelAdmin):
+    save_on_top = True
     list_per_page = 20
     form = forms.MobileForm
     show_full_result_count = True

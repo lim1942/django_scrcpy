@@ -271,9 +271,8 @@ class DeviceClient:
         # 4.metadata
         self.device_name = (await self.video_socket.read_exactly(64)).decode("utf-8").rstrip("\x00")
         video_info = (await self.video_socket.read_exactly(12))
-        self.video_audio_info['video_encode'] = video_info[:4]
-        self.video_audio_info['width'] = video_info[4:8]
-        self.video_audio_info['height'] = video_info[8:]
+        self.video_audio_info['video_encode'] = video_info[:4].replace(b'\x00', b'').decode('ascii')
+        self.video_audio_info['width'], self.video_audio_info['height'] = struct.unpack('>ii', video_info[4:])
         if self.scrcpy_kwargs['audio']:
             accept_audio_encode = await self.audio_socket.read_exactly(4)
             if accept_audio_encode == b'\x00\x00\x00\x00':
@@ -282,7 +281,7 @@ class DeviceClient:
                 await self.audio_socket.disconnect()
                 self.audio_socket = None
             else:
-                self.video_audio_info['audio_encoder'] = accept_audio_encode
+                self.video_audio_info['audio_encoder'] = accept_audio_encode.replace(b'\x00', b'').decode('ascii')
 
     async def _deploy_task(self):
         while True:
@@ -296,10 +295,11 @@ class DeviceClient:
             while True:
                 # 1.读取frame_meta
                 frame_meta = await self.video_socket.read_exactly(12)
+                pts = struct.unpack('>Q', frame_meta[:8])[0]
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.video_socket.read_exactly(data_length)
                 # 2.向录屏工具写入 当前nal
-                self.write_recoder(frame_meta[:8], data_length, current_nal_data, typ='video')
+                self.write_recoder(pts, data_length, current_nal_data, typ='video')
                 # 3.向前端发送当前nal
                 await self.ws_client.send(bytes_data=current_nal_data)
         finally:
@@ -314,10 +314,11 @@ class DeviceClient:
             while True:
                 # 1.读取frame_meta
                 frame_meta = await self.audio_socket.read_exactly(12)
+                pts = struct.unpack('>Q', frame_meta[:8])[0]
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.audio_socket.read_exactly(data_length)
                 # 2.向录屏工具写入当前nal
-                self.write_recoder(frame_meta[:8], data_length, current_nal_data, typ='audio')
+                self.write_recoder(pts, data_length, current_nal_data, typ='audio')
                 # 3.向前端发送当前nal
                 # any(b'\x00\x00') is False
                 if is_raw and (not any(current_nal_data)): 
@@ -343,17 +344,19 @@ class DeviceClient:
     async def handle_first_config_nal(self):
         # 1.video_config_packet
         frame_meta = await self.video_socket.read_exactly(12)
+        pts = struct.unpack('>Q', frame_meta[:8])[0]
         data_length = struct.unpack('>L', frame_meta[8:])[0]
         video_config_nal = await self.video_socket.read_exactly(data_length)
         await self.ws_client.send(bytes_data=video_config_nal)
-        self.video_audio_info['video_header'] = [frame_meta[:8], data_length, video_config_nal]
+        self.video_audio_info['video_header'] = [pts, data_length, video_config_nal]
         # 2.audio_config_packet
         if self.scrcpy_kwargs['audio']:
             frame_meta = await self.audio_socket.read_exactly(12)
+            pts = struct.unpack('>Q', frame_meta[:8])[0]
             data_length = struct.unpack('>L', frame_meta[8:])[0]
             audio_config_nal = await self.audio_socket.read_exactly(data_length)
             await self.ws_client.send(bytes_data=format_audio_data(audio_config_nal))
-            self.video_audio_info['audio_header'] = [frame_meta[:8], data_length, audio_config_nal]
+            self.video_audio_info['audio_header'] = [pts, data_length, audio_config_nal]
 
     def start_recorder(self):
         if self.recorder_enable:
