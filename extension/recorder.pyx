@@ -109,9 +109,8 @@ cdef class Recorder(object):
 
     cdef AVPacket* init_packet(self,  uint64_t pts, int length, uint8_t* data):
         cdef AVPacket* packet = av_packet_alloc()
-        # av_new_packet(packet, length)
-        # memcpy(packet.data, data, packet.size)
-        packet.data = data
+        av_new_packet(packet, length)
+        memcpy(packet.data, data, packet.size)
         if (SC_PACKET_FLAG_CONFIG & pts):
             packet.pts = AV_NOPTS_VALUE
         else:
