@@ -123,64 +123,77 @@ cdef class Recorder(object):
         return packet
 
     def write_video_header(self, uint64_t pts, int length, uint8_t* data):
-        self.packet_merger_init()
-        cdef AVPacket* packet = self.init_packet(pts, length, data)
-        self.packet_merger_merge(packet)
-        cdef uint8_t *extradata = <uint8_t *> av_malloc(packet.size * sizeof(uint8_t))
-        memcpy(extradata, packet.data, packet.size)
-        self.container.streams[0].codecpar.extradata = extradata
-        self.container.streams[0].codecpar.extradata_size = packet.size
-        av_packet_free(&packet)
-        return True
+        cdef AVPacket* packet
+        cdef uint8_t *extradata
+        try:
+            self.packet_merger_init()
+            packet = self.init_packet(pts, length, data)
+            self.packet_merger_merge(packet)
+            extradata = <uint8_t *> av_malloc(packet.size * sizeof(uint8_t))
+            memcpy(extradata, packet.data, packet.size)
+            self.container.streams[0].codecpar.extradata = extradata
+            self.container.streams[0].codecpar.extradata_size = packet.size
+            return True
+        finally:
+            av_packet_free(&packet)
 
     def write_audio_header(self, uint64_t pts, int length, uint8_t* data):
-        cdef AVPacket* packet = self.init_packet(pts, length, data)
-        cdef uint8_t *extradata = <uint8_t *> av_malloc(packet.size * sizeof(uint8_t))
-        memcpy(extradata, packet.data, packet.size)
-        self.container.streams[1].codecpar.extradata = extradata
-        self.container.streams[1].codecpar.extradata_size = packet.size
-        av_packet_free(&packet)
-        return True
+        cdef AVPacket* packet
+        cdef uint8_t *extradata
+        try:
+            packet = self.init_packet(pts, length, data)
+            extradata = <uint8_t *> av_malloc(packet.size * sizeof(uint8_t))
+            memcpy(extradata, packet.data, packet.size)
+            self.container.streams[1].codecpar.extradata = extradata
+            self.container.streams[1].codecpar.extradata_size = packet.size
+            return True
+        finally:
+            av_packet_free(&packet)
 
     def write_header(self):
         return (avformat_write_header(self.container, NULL) >= 0)
 
     def write_video_packet(self, uint64_t pts, int length, uint8_t* data):
-        cdef AVPacket* packet = self.init_packet(pts, length, data)
-        if self.pts_origin == AV_NOPTS_VALUE:
-            self.pts_origin = packet.pts
-        # config packet
-        if packet.pts == AV_NOPTS_VALUE:
-            self.packet_merger_merge(packet)
-        # data packet
-        else:
-            self.pts_last = packet.pts
-            packet.stream_index = 0
-            packet.pts -= self.pts_origin
-            packet.dts = packet.pts
-            self.packet_merger_merge(packet)
-            if self.previous_video_packet:
-                self.previous_video_packet.duration = packet.pts- self.previous_video_packet.pts
-                av_packet_rescale_ts(self.previous_video_packet, RECORD_TIME_BASE, self.container.streams[0].time_base)
-                if av_interleaved_write_frame(self.container, self.previous_video_packet)<0:
-                    return False
-                av_packet_free(&self.previous_video_packet)
-            self.previous_video_packet = packet
-            packet = NULL
-            return True
+        cdef AVPacket* packet
+        try:
+            packet = self.init_packet(pts, length, data)
+            if self.pts_origin == AV_NOPTS_VALUE:
+                self.pts_origin = packet.pts
+            # config packet
+            if packet.pts == AV_NOPTS_VALUE:
+                self.packet_merger_merge(packet)
+            # data packet
+            else:
+                self.pts_last = packet.pts
+                packet.stream_index = 0
+                packet.pts -= self.pts_origin
+                packet.dts = packet.pts
+                self.packet_merger_merge(packet)
+                if self.previous_video_packet:
+                    self.previous_video_packet.duration = packet.pts- self.previous_video_packet.pts
+                    av_packet_rescale_ts(self.previous_video_packet, RECORD_TIME_BASE, self.container.streams[0].time_base)
+                    if av_interleaved_write_frame(self.container, self.previous_video_packet)<0:
+                        return False
+                    av_packet_free(&self.previous_video_packet)
+                self.previous_video_packet = packet
+                packet = NULL
+                return True
+        finally:
+            av_packet_free(&packet)
 
     def write_audio_packet(self, uint64_t pts, int length, uint8_t* data):
-        cdef AVPacket* packet = self.init_packet(pts, length, data)
-        if self.pts_origin == AV_NOPTS_VALUE:
-            self.pts_origin = packet.pts
-        packet.stream_index = 1
-        packet.pts -= self.pts_origin
-        packet.dts = packet.pts
-        av_packet_rescale_ts(packet, RECORD_TIME_BASE, self.container.streams[1].time_base)
-        if av_interleaved_write_frame(self.container, packet)<0:
-            return False
-        av_packet_free(&packet)
-        return True
+        cdef AVPacket* packet 
+        try:
+            packet = self.init_packet(pts, length, data)
+            if self.pts_origin == AV_NOPTS_VALUE:
+                self.pts_origin = packet.pts
+            packet.stream_index = 1
+            packet.pts -= self.pts_origin
+            packet.dts = packet.pts
+            av_packet_rescale_ts(packet, RECORD_TIME_BASE, self.container.streams[1].time_base)
+            return av_interleaved_write_frame(self.container, packet)>=0
+        finally:
+            av_packet_free(&packet)
 
     def close_container(self):
         cdef int duration
