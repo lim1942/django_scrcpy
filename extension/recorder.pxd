@@ -2,8 +2,6 @@ from libc.stdint cimport int64_t, uint64_t, uint32_t, uint8_t, UINT_LEAST32_MAX
 from libc.string cimport memcpy, memmove, strcmp
 from libc.stdlib cimport malloc, free
 from libc.time cimport time
-from cpython.buffer cimport PyBUF_SIMPLE, PyBuffer_Release, PyObject_CheckBuffer, PyObject_GetBuffer
-
 
 
 cdef extern from "libavutil/avutil.h" nogil:
@@ -135,17 +133,6 @@ cdef extern from "libavcodec/avcodec.h" nogil:
     cdef void av_packet_rescale_ts(AVPacket *pkt, AVRational src_tb, AVRational dst_tb)
 
 
-cdef class ByteSource(object):
-    cdef object owner
-    cdef bint has_view
-    cdef Py_buffer view
-    cdef unsigned char *ptr
-    cdef size_t length
-
-
-cdef const AVOutputFormat* find_muxer(const char *name)
-
-
 cdef struct video_packet_merger:
     uint8_t *config
     size_t config_size
@@ -159,8 +146,6 @@ cdef class Recorder(object):
     cdef long start_time
     cdef long finish_time
     cdef AVPacket *previous_video_packet
-    cdef AVPacket *video_packet
-    cdef AVPacket *audio_packet
     cdef AVFormatContext *container
     cdef AVCodecContext *video_codec_ctx
     cdef AVCodecContext *audio_codec_ctx
@@ -173,3 +158,5 @@ cdef class Recorder(object):
     cdef void packet_merger_destroy(self)
 
     cdef AVCodecID get_avcodec_id(self, char *codec_name)
+
+    cdef AVPacket* init_packet(self,  uint64_t pts, int length, uint8_t* data)
