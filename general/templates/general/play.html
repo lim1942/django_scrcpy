@@ -14,7 +14,7 @@
         <option value="broardway2">broardway2</option>
         <option value="webcodecs">webcodecs</option>
     </select>
-    <button id="reload_button">reload</button>
+    <button id="reload_button" style="padding:0">🔄️</button>
     <button id="sw-state">sw-on</button>
   </div>
   <div>
@@ -34,6 +34,7 @@
     <button id="back_button">back</button>
   </div>
   <div>
+    <button id="reload_volume" style="padding:0">🔄️</button>
     <input id="v+_checkbox" type="checkbox" value="24"/>
     <button id="v+_button">v+</button>
     <input id="v-_checkbox" type="checkbox" value="25"/>
@@ -684,6 +685,13 @@
       load_websocket()
     }
 
+    // reload audio player
+    function reload_audio_player(){
+      if (window.audio_player != null){
+        window.audio_player.init(window.audio_player.option)
+      }
+    }
+
     //flush_duration
     function flush_duration(){
       if (window.player_start_date){
@@ -698,6 +706,7 @@
     window.onload = function(){
       setInterval(flush_duration, 1000);
       document.getElementById('reload_button').addEventListener('click', reload)
+      document.getElementById('reload_volume').addEventListener('click', reload_audio_player)
       load_utils()
       load_audio_player()
       load_video_player()
