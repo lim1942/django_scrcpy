@@ -1,7 +1,7 @@
 run:
-	uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000
+	uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000 --lifespan off
 stop:
-	ps -ef | grep "uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000" | grep -v grep | awk '{print $$2}' | xargs kill -9
+	lsof -i:8000 | grep "IPv4" | grep -v grep | awk '{print $$2}' | xargs kill -9
 restart:
 	make stop && make
 build_recorder:

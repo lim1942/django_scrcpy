@@ -1,62 +1,18 @@
 import os
-import re
-import sys
 import json
 import random
 import struct
 import logging
 import asyncio
 import datetime
-import threading
 
-from asynch.tools.utils import AsyncSocket
 from asynch.tools.adb import AsyncAdbDevice
 from asynch.serializers import format_audio_data
 from django_scrcpy.settings import MEDIA_ROOT, BASE_DIR
 from asynch.constants import sc_control_msg_type, sc_copy_key, sc_screen_power_mode
 from asynch.constants.input import android_metastate, android_keyevent_action, android_motionevent_action, \
     android_motionevent_buttons
-logging.basicConfig(level=logging.INFO)
-
-
-class DeviceRecorder:
-    SERVER_PORT = 45678
-    SERVER_HOST = '0.0.0.0'
-    RECORDER_CLIENT_SOCKET = {}
-    EVENT_LOOP = asyncio.new_event_loop()
-
-    @classmethod
-    async def accept(cls, reader, writer):
-        recorder_client = AsyncSocket(reader=reader, writer=writer)
-        session_id = await recorder_client.read_string_exactly(32)
-        cls.RECORDER_CLIENT_SOCKET[session_id] = recorder_client
-        logging.info(f"【RecorderServer】 =======> accept client {session_id}")
-
-    @classmethod
-    async def _start_server(cls):
-        server = await asyncio.start_server(cls.accept, cls.SERVER_HOST, cls.SERVER_PORT)
-        async with server:
-            await server.serve_forever()
-
-    @classmethod
-    def start_server(cls):
-        def task():
-            asyncio.set_event_loop(cls.EVENT_LOOP)
-            asyncio.run(cls._start_server())
-        thread = threading.Thread(target=task, )
-        thread.start()
-        logging.info(f"【RecorderServer】 =======> start on {cls.SERVER_HOST}:{cls.SERVER_PORT}")
-
-    @classmethod
-    def get_recorder_socket(cls, session_id):
-        return cls.RECORDER_CLIENT_SOCKET[session_id]
-
-    @classmethod
-    async def del_recorder_socket(cls, session_id):
-        cls.RECORDER_CLIENT_SOCKET[session_id].writer.write_eof()
-        await cls.RECORDER_CLIENT_SOCKET[session_id].writer.drain()
-        del cls.RECORDER_CLIENT_SOCKET[session_id]
-        logging.info(f"【RecorderServer】 =======> remove client {session_id}")
+logging.basicConfig(format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:%(message)s', level=logging.INFO)
 
 
 class DeviceController:
@@ -225,9 +181,6 @@ class DeviceController:
 
 
 class DeviceClient:
-    # 录屏工具
-    recorder = DeviceRecorder
-    recorder.start_server()
     # socket超时时间,毫秒
     connect_timeout = 300
 
@@ -256,13 +209,13 @@ class DeviceClient:
         self.controller = DeviceController(self)
         # 需要推流的ws_client
         self.ws_client = ws_client
+        # 音视频信息
+        self.video_audio_info = dict()
         # 录屏相关
         self.recorder_enable = self.scrcpy_kwargs.pop('recorder_enable', None)
         self.recorder_format = self.scrcpy_kwargs.pop('recorder_format', None)
-        self.recorder_ctx = None
-        self.recorder_socket = None
-        self.recorder_start_time = None
-        self.recorder_finish_time = None
+        self.recorder_filename = os.path.join(MEDIA_ROOT, 'video', f"{self.ws_session_id}.{self.recorder_format}")
+        self.recorder = None
 
     async def cancel_task(self, task):
         logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) task cancel {task}")
@@ -318,20 +271,17 @@ class DeviceClient:
         # 4.metadata
         self.device_name = (await self.video_socket.read_exactly(64)).decode("utf-8").rstrip("\x00")
         video_info = (await self.video_socket.read_exactly(12))
-        accept_video_encode = video_info[:4]
-        self.resolution = struct.unpack(">LL", video_info[4:])
-        # 5.send meta to recorder
-        await self.send_to_recorder(video_info)
+        self.video_audio_info['video_encode'] = video_info[:4].replace(b'\x00', b'').decode('ascii')
+        self.video_audio_info['width'], self.video_audio_info['height'] = struct.unpack('>ii', video_info[4:])
         if self.scrcpy_kwargs['audio']:
             accept_audio_encode = await self.audio_socket.read_exactly(4)
-            await self.send_to_recorder(accept_audio_encode)
             if accept_audio_encode == b'\x00\x00\x00\x00':
                 logging.error(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) open audio error, has Android >==11?")
                 self.scrcpy_kwargs['audio'] = False
                 await self.audio_socket.disconnect()
                 self.audio_socket = None
-        else:
-            await self.send_to_recorder(struct.pack(">L", 0))
+            else:
+                self.video_audio_info['audio_encoder'] = accept_audio_encode.replace(b'\x00', b'').decode('ascii')
 
     async def _deploy_task(self):
         while True:
@@ -345,10 +295,11 @@ class DeviceClient:
             while True:
                 # 1.读取frame_meta
                 frame_meta = await self.video_socket.read_exactly(12)
+                pts = struct.unpack('>Q', frame_meta[:8])[0]
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.video_socket.read_exactly(data_length)
-                # 2.向录屏工具发送当前nal
-                await self.send_to_recorder(frame_meta+current_nal_data)
+                # 2.向录屏工具写入 当前nal
+                self.write_recoder(pts, data_length, current_nal_data, typ='video')
                 # 3.向前端发送当前nal
                 await self.ws_client.send(bytes_data=current_nal_data)
         finally:
@@ -363,10 +314,11 @@ class DeviceClient:
             while True:
                 # 1.读取frame_meta
                 frame_meta = await self.audio_socket.read_exactly(12)
+                pts = struct.unpack('>Q', frame_meta[:8])[0]
                 data_length = struct.unpack('>L', frame_meta[8:])[0]
                 current_nal_data = await self.audio_socket.read_exactly(data_length)
-                # 2.向录屏工具发送当前nal
-                await self.send_to_recorder(frame_meta + current_nal_data)
+                # 2.向录屏工具写入当前nal
+                self.write_recoder(pts, data_length, current_nal_data, typ='audio')
                 # 3.向前端发送当前nal
                 # any(b'\x00\x00') is False
                 if is_raw and (not any(current_nal_data)): 
@@ -392,71 +344,74 @@ class DeviceClient:
     async def handle_first_config_nal(self):
         # 1.video_config_packet
         frame_meta = await self.video_socket.read_exactly(12)
+        pts = struct.unpack('>Q', frame_meta[:8])[0]
         data_length = struct.unpack('>L', frame_meta[8:])[0]
         video_config_nal = await self.video_socket.read_exactly(data_length)
         await self.ws_client.send(bytes_data=video_config_nal)
-        await self.send_to_recorder(frame_meta + video_config_nal)
+        self.video_audio_info['video_header'] = [pts, data_length, video_config_nal]
         # 2.audio_config_packet
         if self.scrcpy_kwargs['audio']:
             frame_meta = await self.audio_socket.read_exactly(12)
+            pts = struct.unpack('>Q', frame_meta[:8])[0]
             data_length = struct.unpack('>L', frame_meta[8:])[0]
             audio_config_nal = await self.audio_socket.read_exactly(data_length)
             await self.ws_client.send(bytes_data=format_audio_data(audio_config_nal))
-            await self.send_to_recorder(frame_meta + audio_config_nal)
+            self.video_audio_info['audio_header'] = [pts, data_length, audio_config_nal]
 
-    async def start_recorder(self):
+    def start_recorder(self):
         if self.recorder_enable:
-            cmd = os.path.join(BASE_DIR, 'asset/recorder.out')
-            args = [f'{self.ws_session_id}.{self.recorder_format}', '127.0.0.1', '45678', 'media/video/']
-            self.recorder_ctx = await asyncio.create_subprocess_exec(cmd, *args, stdout=asyncio.subprocess.PIPE, stderr=sys.stderr)
-            for _ in range(200):
-                await asyncio.sleep(0.01)
-                if self.ws_session_id in self.recorder.RECORDER_CLIENT_SOCKET:
-                    self.recorder_socket = self.recorder.RECORDER_CLIENT_SOCKET[self.ws_session_id]
-                    logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) recorder_success recorder_socket")
-                    break
-            else:
-                logging.error(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) recorder_error recorder_socket")
-
-    async def send_to_recorder(self, data):
-        if self.recorder_socket:
             try:
-                await self.recorder_socket.write(data)
+                from extension.recorder import Recorder
+                self.recorder = Recorder(self.recorder_format, self.recorder_filename, self.scrcpy_kwargs['audio'])
+                assert self.recorder.add_video_stream(self.video_audio_info['video_encode'], self.video_audio_info['width'], self.video_audio_info['height'])
+                assert self.recorder.write_video_header(*self.video_audio_info['video_header'])
+                if self.video_audio_info.get('audio_encoder'):
+                    assert self.recorder.add_audio_stream(self.video_audio_info['audio_encoder'])
+                    assert self.recorder.write_audio_header(*self.video_audio_info['audio_header'])
+                assert self.recorder.write_header()
             except Exception as e:
-                await self.stop_recorder()
+                logging.error(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) recorder_error start_recorder {type(e)}: {str(e)}")
+                del self.recorder
+                self.recorder = None
+
+    def write_recoder(self, *args, typ='video'):
+        if self.recorder:
+            try:
+                if typ == 'video':
+                    assert self.recorder.write_video_packet(*args)
+                else:
+                    assert self.recorder.write_audio_packet(*args)
+            except Exception as e:
+                logging.error(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) recorder_error write_recoder {type(e)}: {str(e)}")
+                del self.recorder
+                self.recorder = None
 
     async def stop_recorder(self):
-        if self.recorder_socket:
-            recorder_filename = os.path.join(MEDIA_ROOT, 'video', f"{self.ws_session_id}.{self.recorder_format}")
+        if self.recorder:
             try:
                 from general.models import Video
-                self.recorder_socket = None
-                await self.recorder.del_recorder_socket(self.ws_session_id)
-                await self.recorder_ctx.wait()
-                stdout, stderr = await self.recorder_ctx.communicate()
-                stdout_msg = stdout.decode('utf-8')
-                logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) {stdout_msg}")
-                duration = int(re.search(r"视频时长:(\d+)秒!!", stdout_msg).group(1))
+                duration = self.recorder.close_container()
+                assert duration
                 data = dict(
                     video_id=self.ws_session_id,
                     device_id=self.device_id,
                     format=self.recorder_format,
                     duration=duration,
-                    size=int(os.path.getsize(recorder_filename)/ 1024),
-                    start_time=self.recorder_start_time,
-                    finish_time=self.recorder_finish_time,
+                    size=int(os.path.getsize(self.recorder_filename)/ 1024),
+                    start_time=datetime.datetime.fromtimestamp(self.recorder.start_time),
+                    finish_time=datetime.datetime.fromtimestamp(self.recorder.finish_time),
                     config=json.dumps(self.scrcpy_kwargs)
                 )
                 await Video.objects.acreate(**data)
             except Exception as e:
                 logging.error(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) recorder_error stop_recorder {type(e)}: {str(e)}")
-                self.recorder_socket = None
-                if self.ws_session_id in self.recorder.RECORDER_CLIENT_SOCKET:
-                    del self.recorder.RECORDER_CLIENT_SOCKET[self.ws_session_id]
                 try:
-                    os.remove(recorder_filename)
+                    os.remove(self.recorder_filename)
                 except:
                     pass
+            finally:
+                del self.recorder
+                self.recorder = None
 
     async def start(self):
         logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) =======> start {self.scrcpy_kwargs}")
@@ -464,14 +419,13 @@ class DeviceClient:
         logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) (1).start deploy")
         await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
-        # 2.start_recorder
-        logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) (2).start recorder")
-        await self.start_recorder()
-        # 3.create socket and get first config nal
-        logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) (3).start socket")
+        # 2.create socket and get first config nal
+        logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) (2).start socket")
         await self.create_socket()
-        self.recorder_start_time = datetime.datetime.now()
         await self.handle_first_config_nal()
+        # 3.start_recorder
+        logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) (3).start recorder")
+        self.start_recorder()
         # 4.video task
         logging.info(f"【DeviceClient】({self.device_id}:{self.ws_session_id}) (4).start video task")
         self.video_task = asyncio.create_task(self._video_task())
@@ -485,7 +439,6 @@ class DeviceClient:
     async def stop(self):
         try:
             # 1.stop video task
-            self.recorder_finish_time = datetime.datetime.now()
             if self.video_socket:
                 await self.video_socket.disconnect()
                 self.video_socket = None

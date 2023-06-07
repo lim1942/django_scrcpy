@@ -17,6 +17,7 @@ from django_scrcpy.settings import MEDIA_ROOT
 
 @admin.register(models.Mobile)
 class MobileAdmin(ExportActionMixin, admin.ModelAdmin):
+    save_on_top = True
     list_per_page = 20
     form = forms.MobileForm
     show_full_result_count = True
@@ -77,7 +78,7 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     show_full_result_count = True
     search_fields = ['device_id']
     list_filter = ['device_id', 'format', 'start_time', 'finish_time']
-    list_display = ['video_id', 'format', 'device_id', 'name', 'duration', 'size', 'download', 'video_play', 'start_time', 'finish_time']
+    list_display = ['video_id', 'format', 'device_id', 'name', 'duration', 'size', 'video_play', 'start_time', 'finish_time']
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
@@ -109,9 +110,10 @@ class VideoAdmin(ExportActionMixin, admin.ModelAdmin):
     download.short_description = '下载'
 
     def video_play(self, obj):
-        video_play_url = reverse("video-play", kwargs={"video_id": obj.video_id, "version": "v1"})
+        filename = os.path.join(MEDIA_ROOT, "video", f"{obj.video_id}.{obj.format}")
+        video_play_url = reverse("asynch:video-play") + f"?filename={filename}"
         return mark_safe(f'<a href="{video_play_url}" target="_blank">访问</a>')
-    video_play.short_description = '播放'
+    video_play.short_description = '播放/下载'
 
 
 @admin.register(models.Picture)

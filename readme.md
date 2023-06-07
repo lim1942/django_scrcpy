@@ -37,7 +37,7 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
  `pip install -r requirements.txt`  
  `python init.py`
 - Run（Visit http://127.0.0.1:8000/admin）  
-`uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000`
+`uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000 --workers 4`
 ### 2.docker运行
 - run  
     - linux  
@@ -61,10 +61,4 @@ webcodecs是浏览器的硬解码，解码速度和质量比broardway要好，�
 在Insecure origins treated as secure中加入需要关闭安全限制站点，逗号分隔，配置好点击Relauch.重启后该站点可用webcodecs播放器了。
 
 # 五.recoding
-only support linux, test in ubuntu.
-### 1.安装录屏依赖
-`sudo apt install gcc libavcodec-dev libavdevice-dev libavformat-dev libavutil-dev libswresample-dev`
-### 2.编译录屏工具
-`gcc asset/recorder.c -lavcodec  -lavformat -lavutil  -o asset/recorder.out`
-### 3.运行
-`uvicorn django_scrcpy.asgi:application --host 0.0.0.0 --port 8000`
+see [recoding support](extension/readme.md)
