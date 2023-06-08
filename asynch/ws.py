@@ -1,4 +1,5 @@
 import re
+import os
 import uuid
 import asyncio
 import logging
@@ -48,12 +49,12 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         self.query_params = parse.parse_qs(self.scope['query_string'].decode('utf-8'))
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
         self.ws_session_id = uuid.uuid4().hex
-
         # 2.获取当前ws_client对应的 device_client
         await self.accept()
         logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) =======> connected")
         self.device_client = DeviceClient(self, self.ws_session_id)
-        await self.send(format_other_data(self.device_client.recorder_filename.encode()))
+        recorder_filename = self.device_client.recorder_filename.split(os.sep)[-1]
+        await self.send(format_other_data(recorder_filename.encode()))
         try:
             await asyncio.wait_for(self.device_client.start(), 4)
         except Exception as e:
