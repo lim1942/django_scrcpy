@@ -51,6 +51,11 @@ def format_set_clipboard_data(data):
     return b'\x00\x00\x00\x02\x01' + data
 
 
+# b'\x00\x00\x00\x02\x02' other_data
+def format_other_data(data):
+    return b'\x00\x00\x00\x02\x02' + data
+
+
 # b'\x00\x00\x00\x03' audio nal data
 def format_audio_data(data):
     return b'\x00\x00\x00\x03' + data

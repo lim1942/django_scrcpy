@@ -8,7 +8,7 @@ from channels.generic.websocket import AsyncWebsocketConsumer
 
 from asynch.device import DeviceClient
 from asynch.constants import sc_control_msg_type
-from asynch.serializers import ReceiveMsgObj, format_get_clipboard_data, format_set_clipboard_data
+from asynch.serializers import ReceiveMsgObj, format_get_clipboard_data, format_set_clipboard_data, format_other_data
 logging.basicConfig(format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelname)s:%(process)d:%(message)s', level=logging.INFO)
 
 
@@ -53,6 +53,7 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         await self.accept()
         logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) =======> connected")
         self.device_client = DeviceClient(self, self.ws_session_id)
+        await self.send(format_other_data(self.device_client.recorder_filename.encode()))
         try:
             await asyncio.wait_for(self.device_client.start(), 4)
         except Exception as e:

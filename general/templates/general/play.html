@@ -14,7 +14,7 @@
         <option value="broardway2">broardway2</option>
         <option value="webcodecs">webcodecs</option>
     </select>
-    <button id="reload_button">reload</button>
+    <button id="reload_button" style="padding:0">🔄️</button>
     <button id="sw-state">sw-on</button>
   </div>
   <div>
@@ -34,6 +34,7 @@
     <button id="back_button">back</button>
   </div>
   <div>
+    <button id="reload_volume" style="padding:0">🔄️</button>
     <input id="v+_checkbox" type="checkbox" value="24"/>
     <button id="v+_button">v+</button>
     <input id="v-_checkbox" type="checkbox" value="25"/>
@@ -633,6 +634,10 @@
       window.ws.onopen = function (e) {
           document.getElementById("error_msg2").style.display='none';
           window.player_start_date = new Date();
+          window.data_size = 0
+          window.frame_cnt = 0 
+          window.previous_data_size = 0
+          window.previous_frame_cnt = 0
           console.log('ws:Client connected')
       }
       window.ws.onerror = function(e){
@@ -640,9 +645,11 @@
       };
       window.ws.onmessage = function (msg) {
           unit8_data = new Uint8Array(msg.data)
+          window.data_size += unit8_data.length
           start_code = unit8_data.slice(0, 5).join('')
           // 1.视频流数据
           if (start_code.startsWith('0001')){
+            window.frame_cnt += 1
             window.video_player_feed(unit8_data)
           }
           //2.其它流数据
@@ -655,6 +662,10 @@
             else if(start_code.endsWith('1')){
                 console.log("paste_sequence:", data)
             }
+            else if(start_code.endsWith('2')){
+              recorder_filename = String.fromCharCode.apply(null, data)
+              console.log("recorder_filename-->: ", recorder_filename)
+            }
           }
           //3.音频流数据
           else if(start_code.startsWith('0003')){
@@ -665,6 +676,10 @@
       }
       window.ws.onclose = function (e) {
         window.player_start_date = null;
+        window.data_size = 0
+        window.frame_cnt = 0 
+        window.previous_data_size = 0
+        window.previous_frame_cnt = 0
         console.log('ws: Client disconnected')
         document.getElementById("error_msg2").style.display='block';
         document.getElementById("error_msg2").innerHTML = "Client disconnected";
@@ -684,20 +699,36 @@
       load_websocket()
     }
 
+    // reload audio player
+    function reload_audio_player(){
+      if (window.audio_player != null){
+        window.audio_player.init(window.audio_player.option)
+      }
+    }
+
     //flush_duration
     function flush_duration(){
+      // 1.duraion
       if (window.player_start_date){
         date_now = new Date();
         document.getElementById("player_duration").innerHTML = parseInt((date_now - window.player_start_date)/1000);
       }else{
         document.getElementById("player_duration").innerHTML = 0;
       }
+      // 2.data
+      fps = "fps: " + (window.frame_cnt-window.previous_frame_cnt).toString() + '; '
+      window.previous_frame_cnt = window.frame_cnt
+      rate = "bit_rate: " + ((window.data_size-window.previous_data_size)/1024).toFixed(1).toString() + 'KB/s; '
+      window.previous_data_size = window.data_size
+      size = "data_size: " + (window.data_size/(1024*1024)).toFixed(1).toString() + 'Mb'
+      console.log("Player_state --> ", fps+rate+size)
     }
 
     // window onload
     window.onload = function(){
       setInterval(flush_duration, 1000);
       document.getElementById('reload_button').addEventListener('click', reload)
+      document.getElementById('reload_volume').addEventListener('click', reload_audio_player)
       load_utils()
       load_audio_player()
       load_video_player()
