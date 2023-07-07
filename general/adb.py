@@ -10,6 +10,22 @@ class AdbDevice:
     adb = adbutils.AdbClient(host=ADB_SERVER_ADDR, port=int(ADB_SERVER_PORT))
 
     @classmethod
+    def connect(cls, device_id):
+        device_id = device_id.replace(',', '.').replace('_', ':')
+        cls.adb.connect(device_id)
+
+    @classmethod
+    def disconnect(cls, device_id):
+        device_id = device_id.replace(',', '.').replace('_', ':')
+        cls.adb.disconnect(device_id)
+
+    @classmethod
+    def tcpip(cls, device_id):
+        device_id = device_id.replace(',', '.').replace('_', ':')
+        device = cls.adb.device(serial=device_id)
+        device.tcpip(5555)
+
+    @classmethod
     def list(cls, slug=False):
         devices = {}
         for item in cls.adb.list():
@@ -157,11 +173,12 @@ class AdbDevice:
 
 
 if __name__ == "__main__":
-    obj = AdbDevice(device_id='ba406a9e0421')
+    # obj = AdbDevice(device_id='ba406a9e0421')
     # print(obj.filemanager_rename())
     # print(obj.device.shell('mv /sdcard/Download/Pod.pm /sdcard/Download/Pod.pm'))
     # print(obj.filemanager_rename('/sdcard/Download/Pod.pm', '/Pod.pm'))
     # print(obj.filemanager_iter_content('/sdcard/Download/Pod.pm').name)
     # obj.filemanager_upload('/sdcard', {'f1':open('views.py','rb')})
     # print(obj.filemanager_walker('/sdcard/Download/1111'))
-    print(obj.filemanager_list('/sdcard/Download'))
+    # print(obj.filemanager_list('/sdcard/Download'))
+    AdbDevice.tcpip('192,168,9,134_5555')
