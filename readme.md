@@ -11,7 +11,7 @@ Provide manage site to configure display(frame-rate,screen-size,bit-rate), suppo
 - web scrcpy
 - file manage
 - audio forward(Android>=11)
-- recording (only linux)
+- recording
 
 ![image](asset/device.png)
 ![image](asset/admin1.png)
