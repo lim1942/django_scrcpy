@@ -1,5 +1,6 @@
 import os
 import json
+import time
 from typing import Any, Optional
 from urllib.parse import quote
 from django.db.models.query import QuerySet
@@ -24,6 +25,19 @@ class MobileAdmin(ExportActionMixin, admin.ModelAdmin):
     search_fields = ['name']
     list_filter = ['device_type', 'updated_time', 'created_time']
     list_display = ['device_id', 'device_name', 'device_type', 'recorder', 'online', 'screen', 'filemanager', 'updated_time', 'created_time']
+    actions = ['connect', 'disconnect', 'tcpip5555']
+
+    def connect(self, request, queryset):
+        for obj in queryset:
+            adb.AdbDevice.connect(obj.device_id)
+
+    def disconnect(self, request, queryset):
+        for obj in queryset:
+            adb.AdbDevice.disconnect(obj.device_id)
+
+    def tcpip5555(self, request, queryset):
+        for obj in queryset:
+            adb.AdbDevice.tcpip(obj.device_id)
 
     def get_readonly_fields(self, request, obj=None):
         if obj:
