@@ -1,5 +1,5 @@
 # 一.Ready-made
-`You do not need build, just prepara livav dependence`
+`You do not need build, just prepara libav dependence`
 - Linux(x64)  
     `sudo apt install libavcodec-dev libavformat-dev libavutil-dev libswresample-dev`
 - Windows(x64)  

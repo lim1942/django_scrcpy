@@ -1,8 +1,8 @@
-import sys
 import json
 
 from django import forms
-from general.models import Mobile, VIDEO_CODEC_CHOICE, AUDIO_CODEC_CHOICE, RECORDER_FORMAT
+from general.models import Mobile, VIDEO_CODEC_CHOICE, AUDIO_CODEC_CHOICE, AUDIO_SOURCE_CHOICE, RECORDER_FORMAT, \
+    DEFAULT_SCRCPY_KWARGS
 
 
 class MobileForm(forms.ModelForm):
@@ -16,6 +16,7 @@ class MobileForm(forms.ModelForm):
     video_bit_rate = forms.IntegerField(label='视频比特率', help_text='800000, 此时视频比特率为800kbs', required=False)
     max_fps = forms.IntegerField(label='视频帧率', help_text='设置视频最大帧率', required=False)
     audio_codec = forms.ChoiceField(label='音频codec', choices=AUDIO_CODEC_CHOICE, required=False)
+    audio_source = forms.ChoiceField(label='音频来源', choices=AUDIO_SOURCE_CHOICE,required=False)
     audio_codec_options = forms.CharField(label='音频codec参数', required=False)
     audio_encoder = forms.CharField(label='音频codec_encoder', required=False, help_text="若无音频请尝试以下某一或者手机支持的其他encoder：OMX.google.aac.encoder | c2.android.opus.encoder | c2.android.aac.encoder")
     audio_bit_rate = forms.IntegerField(label='音频比特率', help_text='128000, 此时音频比特率为128kbs', required=False)
@@ -40,7 +41,7 @@ class MobileForm(forms.ModelForm):
         self._validate_unique = True
         config_dict = json.loads(self.instance.config)
         # update config_dict by form fields
-        config_dict.update({field: self.cleaned_data[field] for field in self.cleaned_data if field in config_dict})
+        config_dict.update({field: self.cleaned_data[field] for field in self.cleaned_data if field in DEFAULT_SCRCPY_KWARGS})
         # valid mp4 video recorder
         if (config_dict['recorder_enable']) and (config_dict['recorder_format'] == 'mp4') and (config_dict['audio_codec'] != 'aac'):
             raise forms.ValidationError("recording: mp4 audio_codec only support aac!!!")

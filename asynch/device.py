@@ -241,7 +241,7 @@ class DeviceClient:
 
     async def deploy_server(self):
         # 1.推送jar包
-        server_file_path = os.path.join(BASE_DIR, "asset/scrcpy-server-v2.0")
+        server_file_path = os.path.join(BASE_DIR, "asset/scrcpy-server-v2.1.1")
         await self.adb_device.push_file(server_file_path, "/data/local/tmp/scrcpy-server.jar")
         # 2.启动一个adb socket去部署scrcpy_server
         self.scrcpy_kwargs['scid'] = '0' + ''.join([hex(random.randint(0, 15))[-1] for _ in range(7)])
@@ -250,7 +250,7 @@ class DeviceClient:
             "app_process",
             "/",
             "com.genymobile.scrcpy.Server",
-            "2.0",
+            "2.1.1",
             *[f"{k}={v}" for k, v in self.scrcpy_kwargs.items()]
         ]
         self.deploy_socket = await self.shell(commands)
