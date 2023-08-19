@@ -6,7 +6,7 @@ from general.models import Mobile, VIDEO_CODEC_CHOICE, AUDIO_CODEC_CHOICE, AUDIO
 
 
 class MobileForm(forms.ModelForm):
-    recorder_enable = forms.BooleanField(label="开启录屏", help_text="需要linux部署方式，window部署不可录屏", required=False)
+    recorder_enable = forms.BooleanField(label="开启录屏", help_text="把投屏过程录屏到文件", required=False)
     audio = forms.BooleanField(label="开启声音", help_text="需要安卓版本>=11，安卓版本=11需要提前解锁手机", required=False)
     control = forms.BooleanField(label="开启控制", help_text="可远程控制手机，控制关闭时仅可投屏", required=False)
     recorder_format = forms.ChoiceField(label="录屏格式", choices=RECORDER_FORMAT, required=False)
