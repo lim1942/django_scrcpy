@@ -1,6 +1,6 @@
 import re
 import os
-import uuid
+import random
 import asyncio
 import logging
 from urllib import parse
@@ -16,8 +16,9 @@ logging.basicConfig(format='%(asctime)s.%(msecs)s:%(name)s:%(thread)d:%(levelnam
 class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        # 投屏的scid,极端情况下会出现scid重复的情况，同一个手机的scrcpy进程scid不能相同
+        self.scid = '0' + ''.join([hex(random.randint(0, 15))[-1] for _ in range(7)])
         self.device_id = None
-        self.ws_session_id = None
         self.query_params = None
         self.device_client = None
 
@@ -34,11 +35,11 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
                 session = await Session.objects.aget(session_key=session_id)
                 return session.get_decoded()
             except:
-                logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) has logout1 !!!")
+                logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.scid}) has logout1 !!!")
                 await self.close()
-                return False            
+                return False
         else:
-            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) has logout2 !!!")
+            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.scid}) has logout2 !!!")
             await self.close()
             return False
 
@@ -48,18 +49,17 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         # 1.获取请求参数
         self.query_params = parse.parse_qs(self.scope['query_string'].decode('utf-8'))
         self.device_id = self.scope['url_route']['kwargs']['device_id'].replace(',', '.').replace('_', ':')
-        self.ws_session_id = uuid.uuid4().hex
         # 2.获取当前ws_client对应的 device_client
         await self.accept()
-        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) =======> connected")
-        self.device_client = DeviceClient(self, self.ws_session_id)
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.scid}) =======> connected")
+        self.device_client = DeviceClient(self, self.scid)
         recorder_filename = self.device_client.recorder_filename.split(os.sep)[-1]
         await self.send(format_other_data(recorder_filename.encode()))
         try:
             await asyncio.wait_for(self.device_client.start(), 4)
         except Exception as e:
             await self.close()
-            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) start session error {type(e)}!!!")
+            logging.error(f"【DeviceWebsocketConsumer】({self.device_id}:{self.scid}) start session error {type(e)}!!!")
 
     async def receive(self, text_data=None, bytes_data=None):
         """receive used to control device"""
@@ -112,4 +112,4 @@ class DeviceWebsocketConsumer(AsyncWebsocketConsumer):
         if self.device_client:
             await self.device_client.stop()
             self.device_client = None
-        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.ws_session_id}) =======> disconnected")
+        logging.info(f"【DeviceWebsocketConsumer】({self.device_id}:{self.scid}) =======> disconnected")
