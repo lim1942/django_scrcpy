@@ -18,6 +18,6 @@ RUN cp asset/db.sqlite3 ./db.sqlite3
 RUN python manage.py collectstatic --noinput
 
 # run
-ENV DJANGO_SCRCPY_ADDR ::
+ENV DJANGO_SCRCPY_ADDR 0.0.0.0
 ENV DJANGO_SCRCPY_PORT 8000
 CMD uvicorn django_scrcpy.asgi:application --host $DJANGO_SCRCPY_ADDR --port $DJANGO_SCRCPY_PORT --workers 4 --lifespan off
