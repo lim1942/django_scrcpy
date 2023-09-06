@@ -183,6 +183,20 @@ class DeviceController:
 class DeviceClient:
     # socket超时时间,毫秒
     connect_timeout = 300
+    # 记录安卓设备上scrcpy进程的scid
+    scid_dict = dict()
+
+    def get_scid(self):
+        scid_record = self.scid_dict.get(self.device_id, set())
+        while True:
+            scid = '0' + ''.join([hex(random.randint(0, 15))[-1] for _ in range(7)])
+            if scid not in scid_record:
+                scid_record.add(scid)
+                self.scid_dict[self.device_id] = scid_record
+                return scid
+
+    def del_scid(self):
+        self.scid_dict[self.device_id].remove(self.scid)
 
     def __init__(self, ws_client, ws_session_id):
         self.ws_session_id = ws_session_id
@@ -191,6 +205,8 @@ class DeviceClient:
         # devices
         self.device_id = ws_client.device_id
         self.adb_device = AsyncAdbDevice(self.device_id)
+        # 单个安卓设备上scrcpy进程的投屏id
+        self.scrcpy_kwargs['scid'] = self.scid = self.get_scid()
         # socket
         self.deploy_socket = None
         self.video_socket = None
@@ -244,7 +260,6 @@ class DeviceClient:
         server_file_path = os.path.join(BASE_DIR, "asset/scrcpy-server-v2.1.1")
         await self.adb_device.push_file(server_file_path, "/data/local/tmp/scrcpy-server.jar")
         # 2.启动一个adb socket去部署scrcpy_server
-        self.scrcpy_kwargs['scid'] = '0' + ''.join([hex(random.randint(0, 15))[-1] for _ in range(7)])
         commands = [
             "CLASSPATH=/data/local/tmp/scrcpy-server.jar",
             "app_process",
@@ -437,6 +452,7 @@ class DeviceClient:
         # self.video_task = asyncio.create_task(self.check_login_task())
 
     async def stop(self):
+        self.del_scid()
         try:
             # 1.stop video task
             if self.video_socket:
