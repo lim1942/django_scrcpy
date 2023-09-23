@@ -6,8 +6,6 @@
 手机web投屏和操控，支持音频，提供一个配置管理页用于配置各设备的投屏参数(帧率，尺寸等),支持多设备。  
 Android Device remote display and control in browser page.audio support   
 Provide manage site to configure display(frame-rate,screen-size,bit-rate), support multi devices.  
-> _**QQ交流群: 696373448**_  
-![image](asset/qq.jpg)
 - web scrcpy
 - file manage
 - audio forward(Android>=11)
