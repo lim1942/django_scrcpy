@@ -58,7 +58,7 @@ We test in local browser[usb2.0, 720x336, 800kbit/s, 25fps] delay average 60ms.
 由于浏览器安全限制，VideoDecorder, AudioDecorder需要在https或者本地localhost访问才能使用。  
 webcodecs是浏览器的硬解码，解码速度和质量比broardway要好，但是兼容性不如broardway，很多浏览器不支持。
 ## 1.chrome关闭特定网址安全限制
-浏览器输入 chrome://flag
+浏览器输入 chrome://flags
 ![image](asset/chrome.png)
 在Insecure origins treated as secure中加入需要关闭安全限制站点，逗号分隔，配置好点击Relauch.重启后该站点可用webcodecs播放器了。
 
