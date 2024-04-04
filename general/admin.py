@@ -23,13 +23,26 @@ class MobileAdmin(ExportActionMixin, admin.ModelAdmin):
     form = forms.MobileForm
     show_full_result_count = True
     search_fields = ['name']
-    list_filter = ['device_type', 'updated_time', 'created_time']
-    list_display = ['device_id', 'device_name', 'device_type', 'recorder', 'online', 'screen', 'filemanager', 'updated_time', 'created_time']
+    list_filter = ['device_type', 'user', 'updated_time', 'created_time']
+    list_display = ['device_id', 'device_name', 'user', 'device_type', 'recorder', 'online', 'screen', 'filemanager', 'updated_time', 'created_time']
     actions = ['connect', 'disconnect', 'tcpip5555']
 
     def connect(self, request, queryset):
         for obj in queryset:
             adb.AdbDevice.connect(obj.device_id)
+
+    def get_fields(self, request, obj=None):
+        fields = super().get_fields(request, obj)
+        if not request.user.is_superuser and 'user' in fields:
+            fields.remove('user')
+        return fields
+
+    def get_queryset(self, request):
+        queryset = super().get_queryset(request)
+        if request.user.is_superuser:
+            return queryset
+        else:
+            return queryset.filter(user=request.user)
 
     def disconnect(self, request, queryset):
         for obj in queryset:

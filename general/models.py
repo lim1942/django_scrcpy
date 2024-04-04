@@ -1,6 +1,6 @@
-import sys
 import json
 
+from django.contrib.auth.models import User
 from django.db import models
 
 
@@ -135,6 +135,7 @@ DEFAULT_SCRCPY_KWARGS = {
 
 
 class Mobile(models.Model):
+    user = models.ForeignKey(User, verbose_name='所属用户', on_delete=models.CASCADE, default=None, null=True, blank=True)
     device_id = models.CharField("device_id", max_length=127, unique=True, null=False, blank=False)
     device_name = models.CharField('设备名', max_length=32, blank=True, null=False)
     device_type = models.CharField('设备类型', max_length=32, blank=True, null=False)
