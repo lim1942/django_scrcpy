@@ -160,6 +160,7 @@ cdef class Recorder(object):
             # config packet
             if packet.pts == AV_NOPTS_VALUE:
                 self.packet_merger_merge(packet)
+                return True
             # data packet
             else:
                 self.pts_last = packet.pts
