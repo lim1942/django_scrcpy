@@ -416,7 +416,8 @@ class DeviceClient:
         logging.info(f"【DeviceClient】({self.device_id}:{self.scid}) =======> start {self.scrcpy_kwargs}")
         # 1.start deploy server
         logging.info(f"【DeviceClient】({self.device_id}:{self.scid}) (1).start deploy")
-        await self.deploy_server()
+        async with self.device_lock:
+            await self.deploy_server()
         self.deploy_task = asyncio.create_task(self._deploy_task())
         # 2.create socket and get first config nal
         logging.info(f"【DeviceClient】({self.device_id}:{self.scid}) (2).start socket")
