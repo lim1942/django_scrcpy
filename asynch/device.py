@@ -55,7 +55,7 @@ class DeviceController:
         await self.inject(inject_data)
         return inject_data
 
-    async def inject_touch_event(self, x, y, resolution, action=android_motionevent_action.AMOTION_EVENT_ACTION_DOWN, touch_id=-1,
+    async def inject_touch_event(self, x, y, resolution, action=android_motionevent_action.AMOTION_EVENT_ACTION_DOWN, touch_id=0,
                                  pressure=1, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
         """
         action: android_motionevent_action
@@ -78,7 +78,7 @@ class DeviceController:
         await self.inject(inject_data)
         return inject_data
 
-    async def inject_scroll_event(self, x, y, distance_x, distance_y, resolution, buttons=android_motionevent_buttons.AMOTION_EVENT_BUTTON_PRIMARY):
+    async def inject_scroll_event(self, x, y, distance_x, distance_y, resolution, buttons=0):
         """
         buttons: android_motionevent_buttons
         inject_data: lens 21
