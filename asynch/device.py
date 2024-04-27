@@ -361,7 +361,8 @@ class DeviceClient:
         if self.recorder_enable:
             try:
                 from extension.recorder import Recorder
-                self.recorder = Recorder(self.recorder_format, self.recorder_filename, self.scrcpy_kwargs['audio'])
+                recorder_format = 'matroska' if self.recorder_format == 'mkv' else self.recorder_format
+                self.recorder = Recorder(recorder_format, self.recorder_filename, self.scrcpy_kwargs['audio'])
                 assert self.recorder.add_video_stream(self.video_audio_info['video_encode'], self.video_audio_info['width'], self.video_audio_info['height'])
                 assert self.recorder.write_video_header(*self.video_audio_info['video_header'])
                 if self.video_audio_info.get('audio_encoder'):
